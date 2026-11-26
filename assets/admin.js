@@ -115,6 +115,7 @@ jQuery(function ($) {
         var form = $('<form method="post"></form>').attr('action', UAP50.export);
         form.append($('<input type="hidden" name="action">').val('uap50_export'));
         form.append($('<input type="hidden" name="_wpnonce">').val(UAP50.exportNonce));
+        form.append($('<input type="hidden" name="delimiter">').val($('#uap50-delimiter').val() || ';'));
         $('body').append(form);
         form.trigger('submit');
         form.remove();
