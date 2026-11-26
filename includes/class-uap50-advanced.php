@@ -345,8 +345,9 @@ private function css_to_xpath($css) {
             'wordpress'=>array('post_title'=>'title','post_content'=>'description','post_status'=>'status','post_type'=>'type','featured_image'=>'images','categories'=>'categories','source_url'=>'source_url')
         );
         if (!isset($maps[$profile])) wp_send_json_error(array('message'=>'Невідомий профіль експорту.'),400);
+        $delimiter = isset($_POST['delimiter']) ? substr(sanitize_text_field(wp_unslash($_POST['delimiter'])), 0, 1) : ';'; if ($delimiter === '') $delimiter = ';';
         nocache_headers(); header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename=ua-parser-'.$profile.'.csv');
-        $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF"); fputcsv($out,array_keys($maps[$profile]),';');
+        $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF"); fputcsv($out,array_keys($maps[$profile]),$delimiter);
         foreach ($items as $item) {
             $row=array();
             foreach ($maps[$profile] as $field) {
@@ -362,7 +363,7 @@ private function css_to_xpath($css) {
                 elseif (isset($item[$field])) $v=$item[$field];
                 $row[]=$v;
             }
-            fputcsv($out,$row,';');
+            fputcsv($out,$row,$delimiter);
         }
         fclose($out); exit;
     }
