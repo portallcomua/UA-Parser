@@ -38,7 +38,7 @@ jQuery(function ($) {
         });
         html += '</div>';
         $('#uap50-results').html(html);
-        $('#uap50-publish,#uap50-export').prop('disabled', false);
+        $('#uap50-publish,#uap50-export,#uap50-export-profile-btn').prop('disabled', false);
     }
 
     $('#uap50-scan').on('click', function () {
