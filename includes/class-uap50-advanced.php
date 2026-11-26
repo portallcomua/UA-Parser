@@ -433,13 +433,32 @@ UAP50JS;
             foreach ((array)(isset($row['attributes'])?$row['attributes']:array()) as $name=>$values) {
                 $name = sanitize_text_field($name);
                 if ($name === '') continue;
-                $attributes[$name] = array_values(array_unique(array_filter(array_map('sanitize_text_field',(array)$values))));
+                $clean_values = array(); foreach ((array)$values as $value) if (is_scalar($value)) { $value = sanitize_text_field((string)$value); if ($value !== '') $clean_values[] = $value; } $attributes[$name] = array_values(array_unique($clean_values));
             }
             $row['title'] = sanitize_text_field(isset($row['title'])?$row['title']:'');
             $row['description'] = wp_kses_post(isset($row['description'])?$row['description']:'');
             $row['price'] = sanitize_text_field(isset($row['price'])?$row['price']:'');
+            $variations = array();
+            foreach (array_slice((array)(isset($row['variations'])?$row['variations']:array()),0,200) as $variant) {
+                if (!is_array($variant)) continue;
+                $variant_attributes = array();
+                foreach ((array)(isset($variant['attributes'])?$variant['attributes']:array()) as $key=>$value) if (is_scalar($value)) $variant_attributes[sanitize_text_field($key)] = sanitize_text_field((string)$value);
+                if (!$variant_attributes) continue;
+                $variant_image = '';
+                if (!empty($variant['image'])) {
+                    $checked_image = $this->valid_url($variant['image']);
+                    if (!is_wp_error($checked_image)) $variant_image = esc_url_raw($checked_image);
+                }
+                $variations[] = array(
+                    'attributes'=>$variant_attributes,
+                    'sku'=>isset($variant['sku'])?sanitize_text_field($variant['sku']):'',
+                    'price'=>isset($variant['price'])?sanitize_text_field($variant['price']):'',
+                    'image'=>$variant_image
+                );
+            }
             $row['images'] = $images;
             $row['attributes'] = $attributes;
+            $row['variations'] = $variations;
             $by_id[$id] = $row;
         }
         $saved = 0;
@@ -479,7 +498,7 @@ UAP50JS;
                 elseif ($field==='categories') $v=implode('|',(array)(isset($item['categories'])?$item['categories']:array()));
                 elseif ($field==='images') $v=implode('|',(array)(isset($item['images'])?$item['images']:array()));
                 elseif ($field==='description') $v=wp_strip_all_tags(isset($item['description'])?$item['description']:'');
-                elseif ($field==='type') $v='simple';
+                elseif ($field==='type') $v=!empty($item['variations'])?'variable':'simple';
                 elseif ($field==='published') $v=0;
                 elseif ($field==='status') $v='draft';
                 elseif ($field==='source_url') $v=isset($item['source_url'])?$item['source_url']:'';
