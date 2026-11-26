@@ -248,7 +248,8 @@ final class UAP50_Data {
         if (!$url || !wp_http_validate_url($url)) return false;
         $host = strtolower((string)wp_parse_url($url, PHP_URL_HOST));
         if (!$host || $host === 'localhost' || substr($host,-6) === '.local') return false;
-        $ip = filter_var($host,FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
+        if (filter_var($host,FILTER_VALIDATE_IP)) return filter_var($host,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE) !== false;
+        $ip = gethostbyname($host);
         return $ip !== $host && filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE) !== false;
     }
 
