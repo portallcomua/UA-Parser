@@ -78,7 +78,7 @@ final class UA_Parser_50 {
                 <h2>Зібрані дані</h2>
                 <div id="uap50-results"><p>Поки немає результатів.</p></div>
                 <div class="uap50-row uap50-actions">
-                    <button class="button" id="uap50-export" disabled>Експорт CSV</button><select id="uap50-export-profile"><option value="prom">Prom</option><option value="rozetka">Rozetka</option><option value="opencart">OpenCart</option><option value="virtuemart">VirtueMart</option><option value="joomshopping">JoomShopping</option><option value="woocommerce">WooCommerce</option><option value="wordpress">WordPress</option></select><button class="button" id="uap50-export-profile-btn" disabled>Експорт за профілем</button>
+                    <button class="button" id="uap50-export" disabled>Експорт CSV</button><label>Роздільник CSV <input id="uap50-delimiter" type="text" value=";" maxlength="1" style="width:42px"></label><select id="uap50-export-profile"><option value="prom">Prom</option><option value="rozetka">Rozetka</option><option value="opencart">OpenCart</option><option value="virtuemart">VirtueMart</option><option value="joomshopping">JoomShopping</option><option value="woocommerce">WooCommerce</option><option value="wordpress">WordPress</option></select><button class="button" id="uap50-export-profile-btn" disabled>Експорт за профілем</button>
                     <select id="uap50-type">
                         <option value="post">Записи WordPress</option>
                         <option value="page">Сторінки WordPress</option>
@@ -92,7 +92,7 @@ final class UA_Parser_50 {
                 </div>
             </section>
             <section class="uap50-card"><h2>Журнал</h2><pre id="uap50-log">UA Parser готовий.</pre></section>
-            <p class="description">Beta 2: візуальний селектор, відновлювана черга пакетного обходу з пошуком пагінації, профілі експорту та розширена публікація.</p>
+            <p class="description">Beta 3: візуальний селектор, пакетний збір товарів зі сторінок категорій, профілі експорту та публікація.</p>
         </div>
         <?php
     }
@@ -342,10 +342,12 @@ final class UA_Parser_50 {
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=ua-parser-export.csv');
         $out = fopen('php://output', 'w');
+        $delimiter = isset($_POST['delimiter']) ? substr(sanitize_text_field(wp_unslash($_POST['delimiter'])), 0, 1) : ';';
+        if ($delimiter === '') $delimiter = ';';
         fwrite($out, "\xEF\xBB\xBF");
-        fputcsv($out, array('source_url', 'title', 'description', 'price', 'images'), ';');
+        fputcsv($out, array('source_url', 'title', 'description', 'price', 'images'), $delimiter);
         foreach ($items as $item) {
-            fputcsv($out, array($item['source_url'], $item['title'], wp_strip_all_tags($item['description']), $item['price'], implode('|', $item['images'])), ';');
+            fputcsv($out, array($item['source_url'], $item['title'], wp_strip_all_tags($item['description']), $item['price'], implode('|', $item['images'])), $delimiter);
         }
         fclose($out);
         exit;
