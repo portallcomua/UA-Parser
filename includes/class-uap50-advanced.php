@@ -78,7 +78,7 @@ final class UAP50_Advanced {
         $pick = function($selector, $fallback) use ($dom,$xp) {
             if ($selector && preg_match('/^[a-zA-Z0-9_#\.\[\]="\'\- >:+~*]+$/', $selector)) {
                 $xpath = $this->css_to_xpath($selector);
-                if ($xpath) { $n=$xp->query($xpath)->item(0); if ($n) return trim(preg_replace('/\s+/u',' ',$n->textContent)); }
+                if ($xpath) { $n=$xp->query($xpath)->item(0); if ($n) return trim(preg_replace('/\s+/u',' ',($n instanceof DOMAttr)?$n->value:$n->textContent)); }
             }
             $n=$xp->query($fallback)->item(0); return $n ? trim(preg_replace('/\s+/u',' ',$n->textContent)) : '';
         };
@@ -86,6 +86,7 @@ final class UAP50_Advanced {
         $description = $pick(isset($selectors['description'])?$selectors['description']:'', '//meta[@name="description"]/@content | //article | //main');
         $price = $pick(isset($selectors['price'])?$selectors['price']:'', '//*[@itemprop="price"] | //*[contains(@class,"price") or contains(@class,"Price")]');
         $images = array();
+        if (!empty($selectors['image'])) { $ix=$this->css_to_xpath($selectors['image']); if ($ix) foreach ($xp->query($ix) as $im) { $v=($im instanceof DOMElement)?($im->getAttribute('src')?:$im->getAttribute('data-src')):$im->nodeValue; $u=$this->absolute($v,$url); if ($u) $images[]=$u; } }
         $queries = array('//meta[@property="og:image"]/@content','//img[@src]/@src','//img[@data-src]/@data-src','//a[contains(@class,"gallery")]/@href');
         foreach ($queries as $q) foreach ($xp->query($q) as $n) {
             $u=$this->absolute($n->nodeValue,$url); if ($u && !in_array($u,$images,true)) $images[]=$u;
