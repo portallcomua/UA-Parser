@@ -33,6 +33,24 @@ final class UAP50_Data {
         }
     }
 
+    private static function css_xpath($selector) {
+        $selector = trim((string)$selector);
+        if ($selector === '' || strpos($selector, ',') !== false || strpos($selector, ':') !== false) return '';
+        $parts = preg_split('/\s+/', $selector);
+        $path = '';
+        foreach ($parts as $part) {
+            if (!preg_match('/^([a-zA-Z][\w-]*)?(?:#([\w-]+))?((?:\.[\w-]+)*)$/', $part, $m)) return '';
+            $step = '//' . (!empty($m[1]) ? $m[1] : '*');
+            if (!empty($m[2])) $step .= '[@id="' . esc_attr($m[2]) . '"]';
+            if (!empty($m[3])) {
+                preg_match_all('/\.([\w-]+)/', $m[3], $classes);
+                foreach ($classes[1] as $class) $step .= '[contains(concat(" ",normalize-space(@class)," ")," ' . esc_attr($class) . ' ")]';
+            }
+            $path .= $step;
+        }
+        return $path;
+    }
+
     private static function json_nodes($value, &$out) {
         if (!is_array($value)) return;
         if (isset($value['@graph']) && is_array($value['@graph'])) foreach ($value['@graph'] as $v) self::json_nodes($v, $out);
@@ -75,10 +93,10 @@ final class UAP50_Data {
         $structured = $product ?: ($product_group ?: $article);
         $get = function($key, $queries) use ($xp, $selectors) {
             if (!empty($selectors[$key])) {
-                $sel = $selectors[$key];
-                if (preg_match('/^[a-zA-Z0-9_#\.\[\]="\'\-\s>:+~*]+$/', $sel)) {
-                    $nodes = @$xp->query('//*[contains(concat(" ", normalize-space(@class), " "), " __never__ ")]');
-                    // A CSS selector is handled by the legacy selector bridge when available.
+                $selector_xpath = self::css_xpath($selectors[$key]);
+                if ($selector_xpath) {
+                    $selected = @$xp->query($selector_xpath)->item(0);
+                    if ($selected) return self::text($selected instanceof DOMAttr ? $selected->value : ($selected instanceof DOMElement && $selected->hasAttribute('content') ? $selected->getAttribute('content') : $selected->textContent));
                 }
             }
             foreach ($queries as $query) {
@@ -181,11 +199,17 @@ final class UAP50_Data {
         }
         $canonical = $xp->query('//link[@rel="canonical"]/@href')->item(0);
         $source = $canonical ? self::absolute($canonical->nodeValue, $url) : $url;
+        $links = array();
+        foreach ($xp->query('//a[@href]/@href') as $linkNode) {
+            $link = self::absolute($linkNode->nodeValue, $url);
+            if ($link && wp_parse_url($link, PHP_URL_HOST) === wp_parse_url($url, PHP_URL_HOST) && !in_array($link, $links, true)) $links[] = esc_url_raw($link);
+            if (count($links) >= 80) break;
+        }
         return array(
             'id'=>wp_generate_uuid4(), 'source_url'=>esc_url_raw($source), 'title'=>sanitize_text_field($title),
             'description'=>wp_kses_post($description), 'price'=>sanitize_text_field($price),
             'images'=>array_values(array_unique($images)), 'attributes'=>$attrs, 'variations'=>$variants,
-            'categories'=>$categories, 'tags'=>$tags,
+            'categories'=>$categories, 'tags'=>$tags, 'links'=>$links,
             'content_type'=>!empty($structured['@type']) ? sanitize_key(is_array($structured['@type']) ? reset($structured['@type']) : $structured['@type']) : 'page'
         );
     }
