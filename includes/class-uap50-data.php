@@ -63,7 +63,7 @@ final class UAP50_Data {
         elseif ($node instanceof DOMElement) {
             $raw = $node->getAttribute('data-zoom-image') ?: $node->getAttribute('data-large_image') ?: $node->getAttribute('data-src') ?: $node->getAttribute('data-lazy-src') ?: $node->getAttribute('data-original') ?: $node->getAttribute('src');
             if (!$raw && $node->tagName === 'a') $raw = $node->getAttribute('href');
-            if (!$raw && $node->tagName === 'source') $raw = $node->getAttribute('srcset');
+            if (!$raw && ($node->tagName === 'source' || $node->tagName === 'img')) $raw = $node->getAttribute('srcset');
         } else $raw = '';
         if (strpos($raw, ',') !== false) $raw = trim(explode(',', $raw)[0]);
         if (strpos($raw, ' ') !== false) $raw = trim(explode(' ', $raw)[0]);
@@ -124,24 +124,21 @@ final class UAP50_Data {
             if (is_array($im)) $im = isset($im['url']) ? $im['url'] : (isset($im['contentUrl']) ? $im['contentUrl'] : '');
             $add_image($im);
         }
-        foreach ($xp->query('//meta[@property="og:image" or @name="twitter:image"]/@content | //img[@src or @data-src or @data-lazy-src or @data-original or @data-large_image] | //picture/source[@srcset] | //a[contains(translate(@class,"GALLERY","gallery"),"gallery") or contains(translate(@rel,"IMAGE","image"),"image")][@href]') as $node) {
+        foreach ($xp->query('//meta[@property="og:image" or @name="twitter:image"]/@content | //img[@src or @srcset or @data-src or @data-lazy-src or @data-original or @data-large_image] | //picture/source[@srcset] | //a[contains(translate(@class,"GALLERY","gallery"),"gallery") or contains(translate(@rel,"IMAGE","image"),"image")][@href]') as $node) {
             $add_image(self::image_from_node($node, $url));
         }
         foreach ($xp->query('//*[@itemprop="image"]') as $node) $add_image(self::image_from_node($node, $url));
         if (!empty($selectors['image'])) {
-            $sel = $selectors['image'];
-            if (preg_match('/^[a-zA-Z0-9_#\.\[\]="\'\-\s>:+~*]+$/', $sel)) {
-                $parts = preg_split('/\s+/', trim($sel));
-                $last = end($parts);
-                if (preg_match('/^[a-zA-Z][\w-]*(?:[.#][\w-]+)*$/', $last)) {
-                    $tag = preg_replace('/([.#])([\w-]+)/', '[$1="$2"]', $last);
-                    $tag = preg_replace('/\[\.([^=]+)="([^"]+)"\]/', '[contains(concat(" ",normalize-space(@class)," ")," $2 ")]', $tag);
-                    $tag = preg_replace('/\[#([^=]+)="([^"]+)"\]/', '[@id="$2"]', $tag);
-                    foreach ($xp->query('//' . $tag) as $node) $add_image(self::image_from_node($node, $url));
-                }
-            }
+            $image_xpath = self::css_xpath($selectors['image']);
+            if ($image_xpath) foreach (@$xp->query($image_xpath) as $node) $add_image(self::image_from_node($node, $url));
         }
         $attrs = array();
+        if (!empty($structured['sku'])) self::add_value($attrs, 'sku', $structured['sku']);
+        if (!empty($structured['mpn'])) self::add_value($attrs, 'mpn', $structured['mpn']);
+        if (!empty($structured['brand'])) {
+            $brand = is_array($structured['brand']) && isset($structured['brand']['name']) ? $structured['brand']['name'] : $structured['brand'];
+            if (is_scalar($brand)) self::add_value($attrs, 'brand', $brand);
+        }
         foreach (array('sku'=>'sku','brand'=>'brand','color'=>'color','size'=>'size','material'=>'material','gtin13'=>'gtin13','mpn'=>'mpn','model'=>'model') as $prop=>$label) {
             foreach ($xp->query('//*[@itemprop="' . $prop . '"]') as $node) self::add_value($attrs, $label, $node->getAttribute('content') ?: $node->textContent);
             if (isset($structured[$prop])) {
@@ -181,9 +178,19 @@ final class UAP50_Data {
             if (!is_array($variant)) continue;
             $va = array();
             foreach (array('color'=>'color','size'=>'size','material'=>'material') as $k=>$label) if (!empty($variant[$k])) { self::add_value($attrs, $label, is_array($variant[$k]) && isset($variant[$k]['name']) ? $variant[$k]['name'] : $variant[$k]); $va[$label] = is_array($variant[$k]) && isset($variant[$k]['name']) ? self::text($variant[$k]['name']) : self::text($variant[$k]); }
+            if (!empty($variant['additionalProperty']) && is_array($variant['additionalProperty'])) {
+                foreach ($variant['additionalProperty'] as $prop) {
+                    if (is_array($prop) && !empty($prop['name']) && isset($prop['value'])) {
+                        self::add_value($attrs, $prop['name'], $prop['value']);
+                        $va[sanitize_key($prop['name'])] = self::text($prop['value']);
+                    }
+                }
+            }
             $vo = isset($variant['offers']) ? $variant['offers'] : array();
             if (isset($vo[0])) $vo = $vo[0];
-            $variants[] = array('attributes'=>$va,'sku'=>isset($variant['sku']) ? self::text($variant['sku']) : '', 'price'=>is_array($vo) && isset($vo['price']) ? self::text($vo['price']) : '', 'image'=>isset($variant['image']) ? (is_array($variant['image']) ? reset($variant['image']) : $variant['image']) : '');
+            $variant_image = isset($variant['image']) ? $variant['image'] : '';
+            if (is_array($variant_image)) $variant_image = isset($variant_image['url']) ? $variant_image['url'] : reset($variant_image);
+            $variants[] = array('attributes'=>$va,'sku'=>isset($variant['sku']) ? self::text($variant['sku']) : '', 'price'=>is_array($vo) && isset($vo['price']) ? self::text($vo['price']) : '', 'image'=>$variant_image);
         }
         $categories = array();
         foreach ($xp->query('//*[@itemprop="category"] | //meta[@property="article:section"]/@content') as $n) {
