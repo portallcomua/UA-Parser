@@ -151,7 +151,8 @@ private function css_to_xpath($css) {
         $this->auth(); $url=isset($_POST['url'])?wp_unslash($_POST['url']):''; $safe=$this->valid_url($url);
         if (is_wp_error($safe)) wp_send_json_error(array('message'=>$safe->get_error_message()),400);
         $uid=get_current_user_id(); $key=self::QUEUE.$uid;
-        $selectors=isset($_POST['selectors'])?json_decode(wp_unslash($_POST['selectors']),true):array(); if (!is_array($selectors)) $selectors=array();\n        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors),DAY_IN_SECONDS);
+        $selectors=isset($_POST['selectors'])?json_decode(wp_unslash($_POST['selectors']),true):array(); if (!is_array($selectors)) $selectors=array();
+        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors),DAY_IN_SECONDS);
         wp_send_json_success(array('started'=>true));
     }
 
@@ -232,7 +233,8 @@ private function css_to_xpath($css) {
                 $raw=preg_replace('/[^0-9,.]/u','',isset($item['price'])?$item['price']:''); if (substr_count($raw,',')===1 && strpos($raw,'.')===false) $raw=str_replace(',','.',$raw); else $raw=str_replace(',','',$raw);
                 if ($raw!=='' && is_numeric($raw)) $p->set_regular_price(wc_format_decimal($raw));
                 $p->update_meta_data('_uap50_source_url',$source);
-                if (!empty($item['categories']) && is_array($item['categories'])) { $cat_ids=array(); foreach ($item['categories'] as $cat_name) { $term=term_exists($cat_name,'product_cat'); if (!$term) $term=wp_insert_term($cat_name,'product_cat'); if (!is_wp_error($term)) $cat_ids[]=(int)(is_array($term)?$term['term_id']:$term); } if ($cat_ids) $p->set_category_ids(array_values(array_unique($cat_ids))); }\n                if (!empty($item['attributes']) && is_array($item['attributes'])) {
+                if (!empty($item['categories']) && is_array($item['categories'])) { $cat_ids=array(); foreach ($item['categories'] as $cat_name) { $term=term_exists($cat_name,'product_cat'); if (!$term) $term=wp_insert_term($cat_name,'product_cat'); if (!is_wp_error($term)) $cat_ids[]=(int)(is_array($term)?$term['term_id']:$term); } if ($cat_ids) $p->set_category_ids(array_values(array_unique($cat_ids))); }
+                if (!empty($item['attributes']) && is_array($item['attributes'])) {
                     $wcattrs=array(); $pos=0;
                     foreach ($item['attributes'] as $k=>$v) {
                         $k=sanitize_text_field($k); $v=sanitize_text_field($v); $p->update_meta_data('uap50_'.sanitize_key($k),$v);
