@@ -386,6 +386,7 @@ private function css_to_xpath($css) {
                 if ($raw!=='' && is_numeric($raw)) $p->set_regular_price(wc_format_decimal($raw));
                 $p->update_meta_data('_uap50_source_url',$source);
                 if (!empty($item['categories']) && is_array($item['categories'])) { $cat_ids=array(); foreach ($item['categories'] as $cat_name) { $term=term_exists($cat_name,'product_cat'); if (!$term) $term=wp_insert_term($cat_name,'product_cat'); if (!is_wp_error($term)) $cat_ids[]=(int)(is_array($term)?$term['term_id']:$term); } if ($cat_ids) $p->set_category_ids(array_values(array_unique($cat_ids))); }
+                if (!empty($item['tags']) && is_array($item['tags'])) wp_set_object_terms($p->get_id(), array_map('sanitize_text_field', $item['tags']), 'product_tag', false);
                 if (!empty($item['attributes']) && is_array($item['attributes'])) {
                     $wcattrs=array(); $pos=0;
                     foreach ($item['attributes'] as $k=>$v) {
