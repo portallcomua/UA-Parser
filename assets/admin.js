@@ -96,7 +96,7 @@ jQuery(function ($) {
         progress(20, 'Публікуємо…');
         call('uap50_publish', {
             post_type: $('#uap50-type').val(),
-            post_status: $('#uap50-status').val(),
+            post_status: $('#uap50-post-status').val(),
             selected: $('.uap50-select:checked').map(function(){ return this.value; }).get()
         }).done(function (response) {
             if (!response.success) return log(response.data && response.data.message ? response.data.message : 'Помилка публікації.');
