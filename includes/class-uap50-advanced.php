@@ -24,7 +24,7 @@ final class UAP50_Advanced {
 
     public function assets($hook) {
         if ($hook !== 'toplevel_page_ua-parser') return;
-        wp_enqueue_script('uap50-advanced', plugin_dir_url(dirname(__FILE__)) . 'assets/advanced.js', array('jquery', 'uap50'), '5.0.0-beta.6', true);
+        wp_enqueue_script('uap50-advanced', plugin_dir_url(dirname(__FILE__)) . 'assets/advanced.js', array('jquery', 'uap50'), '5.0.0-beta.7', true);
     }
 
     private function auth() {
