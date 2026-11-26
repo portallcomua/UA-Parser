@@ -53,7 +53,7 @@ final class UA_Parser_50 {
                     <input id="uap50-url" type="url" placeholder="https://example.com/product/example">
                     <button class="button" id="uap50-scan">Аналізувати</button>
                     <button class="button button-primary" id="uap50-collect">Зібрати сторінку</button>
-                    <button class="button" id="uap50-crawl">Зібрати пов’язані сторінки</button>
+                    <button class="button" id="uap50-crawl">Зібрати пов’язані сторінки</button><button class="button" id="uap50-resume-queue" style="display:none">Продовжити чергу</button>
                 </div>
                 <p class="description">Візуально оберіть поля на сторінці, запустіть фонову пакетну чергу та збережіть профіль.</p>
             </section>
