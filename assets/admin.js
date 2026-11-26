@@ -31,7 +31,20 @@ jQuery(function ($) {
         collected.forEach(function (item) {
             html += '<article class="uap50-item"><label><input type="checkbox" checked disabled> <b>' + esc(item.title || 'Без назви') + '</b></label>';
             html += '<small>' + esc(item.source_url) + '</small>';
-            if (item.images && item.images.length) html += '<img src="' + esc(item.images[0]) + '" alt="">';
+            if (item.images && item.images.length) {
+                html += '<div class="uap50-gallery">';
+                item.images.forEach(function (image) { html += '<img src="' + esc(image) + '" alt="" loading="lazy">'; });
+                html += '</div><small>Фото в галереї: ' + item.images.length + '</small>';
+            }
+            if (item.attributes) {
+                html += '<dl class="uap50-attributes">';
+                Object.keys(item.attributes).forEach(function (key) {
+                    var values = Array.isArray(item.attributes[key]) ? item.attributes[key] : [item.attributes[key]];
+                    html += '<dt>' + esc(key) + '</dt><dd>' + esc(values.join(' / ')) + '</dd>';
+                });
+                html += '</dl>';
+            }
+            if (item.variations && item.variations.length) html += '<small>Знайдено варіантів: ' + item.variations.length + '</small>';
             html += '<p>' + esc((item.description || '').replace(/<[^>]*>/g, '').slice(0, 220)) + '</p>';
             if (item.price) html += '<strong>' + esc(item.price) + '</strong>';
             html += '</article>';
