@@ -102,15 +102,15 @@ final class UAP50_Advanced {
             'images'=>array_values(array_unique($images)),'attributes'=>$attrs);
     }
 
-    private function css_to_xpath($css) {
-        $css = trim($css);
-        if (!$css || strpos($css,',')!==false || strpos($css,':')!==false) return '';
-        $parts = preg_split('/\s+/', $css); $out=array();
+private function css_to_xpath($css) {
+        $css=trim($css); if (!$css || strpos($css,',')!==false || strpos($css,':')!==false) return '';
+        $parts=preg_split('/\\s+/', $css); $out=array();
         foreach ($parts as $part) {
-            if (preg_match('/^#([\w-]+)$/',$part,$m)) $out[]='//*[@id="'.esc_attr($m[1]).'"]';
-            elseif (preg_match('/^\.([\w-]+)$/',$part,$m)) $out[]='//*[contains(concat(" ",normalize-space(@class)," ")," '.$m[1].' ")]';
-            elseif (preg_match('/^[a-zA-Z][\w-]*$/',$part)) $out[]='//'.$part;
-            else return '';
+            if (!preg_match('/^([a-zA-Z][\\w-]*)?(?:#([\\w-]+))?((?:\\.[\\w-]+)*)$/',$part,$m)) return '';
+            $tag=!empty($m[1])?$m[1]:'*'; $expr='//'.$tag;
+            if (!empty($m[2])) $expr.='[@id="'.esc_attr($m[2]).'"]';
+            if (!empty($m[3])) { preg_match_all('/\\.([\\w-]+)/',$m[3],$classes); foreach ($classes[1] as $cl) $expr.='[contains(concat(" ",normalize-space(@class)," ")," '.$cl.' ")]'; }
+            $out[]=$expr;
         }
         return implode('', $out);
     }
@@ -128,8 +128,8 @@ final class UAP50_Advanced {
         }
         $base=$dom->createElement('base'); $base->setAttribute('href',esc_url($url));
         $head=$dom->getElementsByTagName('head')->item(0); if ($head) $head->insertBefore($base,$head->firstChild);
-        $js = '<script>(function(){function path(e){var a=[];while(e&&e.nodeType===1&&e!==document.body){var s=e.tagName.toLowerCase();if(e.id){s+="#"+e.id;a.unshift(s);break;}if(e.className&&typeof e.className==="string")s+="."+e.className.trim().split(/\\s+/).slice(0,2).join(".");var p=e.parentNode;if(p){var same=[].filter.call(p.children,function(x){return x.tagName===e.tagName;});if(same.length>1)s+=":nth-of-type("+(same.indexOf(e)+1)+")";}a.unshift(s);e=p;}return a.join(" > ");}document.addEventListener("click",function(ev){var e=ev.target.closest("h1,h2,h3,p,span,div,img,a,li,button");if(!e)return;ev.preventDefault();ev.stopPropagation();parent.postMessage({uap50Selector:{selector:path(e),text:(e.innerText||e.alt||e.getAttribute("content")||"").trim().slice(0,500),tag:e.tagName.toLowerCase(),image:e.tagName==="IMG"?e.src:""}},"*");},true);})();<\/script>';
-        $body=$dom->getElementsByTagName('body')->item(0); if ($body) { $script=$dom->createElement('script'); $script->appendChild($dom->createTextNode(str_replace('<\\/script>','</script>',$js))); $body->appendChild($script); }
+        $scriptCode = '(function(){function path(e){var a=[];while(e&&e.nodeType===1&&e!==document.body){var s=e.tagName.toLowerCase();if(e.id){s+="#"+e.id;a.unshift(s);break;}if(e.className&&typeof e.className==="string"){var cl=e.className.trim().split(/\\s+/).filter(Boolean).slice(0,1);if(cl.length)s+="."+cl[0];}a.unshift(s);e=e.parentElement;}return a.join(" ");}document.addEventListener("click",function(ev){var e=ev.target.closest("h1,h2,h3,p,span,div,img,a,li,button");if(!e)return;ev.preventDefault();ev.stopPropagation();parent.postMessage({uap50Selector:{selector:path(e),text:(e.innerText||e.alt||e.getAttribute("content")||"").trim().slice(0,500),tag:e.tagName.toLowerCase(),image:e.tagName==="IMG"?e.src:""}},"*");},true);})();';
+        $body=$dom->getElementsByTagName('body')->item(0); if ($body) { $script=$dom->createElement('script'); $script->appendChild($dom->createTextNode($scriptCode)); $body->appendChild($script); }
         wp_send_json_success(array('html'=>$dom->saveHTML(),'url'=>esc_url_raw($url)));
     }
 
