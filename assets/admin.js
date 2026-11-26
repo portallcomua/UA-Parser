@@ -24,7 +24,7 @@ jQuery(function ($) {
     function render() {
         if (!collected.length) {
             $('#uap50-results').html('<p>Поки немає результатів.</p>');
-            $('#uap50-publish,#uap50-export').prop('disabled', true);
+            $('#uap50-publish,#uap50-export,#uap50-export-profile-btn').prop('disabled', true);
             return;
         }
         var html = '<div class="uap50-grid">';
