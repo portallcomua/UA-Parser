@@ -29,7 +29,7 @@ jQuery(function ($) {
         }
         var html = '<div class="uap50-grid">';
         collected.forEach(function (item) {
-            html += '<article class="uap50-item"><label><input type="checkbox" checked disabled> <b>' + esc(item.title || 'Без назви') + '</b></label>';
+            html += '<article class="uap50-item" data-item-id="' + esc(item.id) + '"><label><input type="checkbox" class="uap50-select" checked value="' + esc(item.id) + '"> <b>' + esc(item.title || 'Без назви') + '</b></label>';
             html += '<small>' + esc(item.source_url) + '</small>';
             if (item.images && item.images.length) {
                 html += '<div class="uap50-gallery">';
