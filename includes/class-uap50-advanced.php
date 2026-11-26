@@ -134,11 +134,12 @@ final class UAP50_Advanced {
         foreach (array('brand','sku','color','attribute') as $field) {
             if (!empty($selectors[$field])) { $sx=$this->css_to_xpath($selectors[$field]); if ($sx) { $sn=$xp->query($sx)->item(0); if ($sn) { $sv=($sn instanceof DOMAttr)?$sn->value:(($sn instanceof DOMElement && $sn->tagName==='img')?$sn->getAttribute('alt'):$sn->textContent); if (trim($sv)!=='') $attrs[$field]=sanitize_text_field(trim($sv)); } } }
         }
-        $categories=array(); foreach ($xp->query('//*[@itemprop="category"] | //*[@itemprop="name" and ancestor::*[@itemtype="*BreadcrumbList"]]') as $cn) { $cv=trim($cn->textContent); if ($cv && !in_array($cv,$categories,true)) $categories[]=sanitize_text_field($cv); if (count($categories)>=8) break; }
+        $categories=array(); foreach ($xp->query('//*[@itemprop="category"] | //*[@itemprop="name" and ancestor::*[contains(@itemtype,"BreadcrumbList")]]') as $cn) { $cv=trim($cn->textContent); if ($cv && !in_array($cv,$categories,true)) $categories[]=sanitize_text_field($cv); if (count($categories)>=8) break; }
+        $tags=array(); foreach ($xp->query('//*[@rel="tag"] | //meta[@property="article:tag"]/@content') as $tn) { $tv=trim($tn instanceof DOMAttr ? $tn->value : $tn->textContent); if ($tv && !in_array($tv,$tags,true)) $tags[]=sanitize_text_field($tv); if (count($tags)>=20) break; }
         $canonical=$xp->query('//link[@rel="canonical"]/@href')->item(0);
         return array('id'=>wp_generate_uuid4(),'source_url'=>$canonical?$this->absolute($canonical->nodeValue,$url):$url,
             'title'=>sanitize_text_field($title),'description'=>wp_kses_post($description),'price'=>sanitize_text_field($price),
-            'images'=>array_values(array_unique($images)),'attributes'=>$attrs,'categories'=>$categories,
+            'images'=>array_values(array_unique($images)),'attributes'=>$attrs,'categories'=>$categories,'tags'=>$tags,
             'content_type'=>!empty($structured['@type']) ? sanitize_key(is_array($structured['@type']) ? reset($structured['@type']) : $structured['@type']) : 'page');
     }
 
@@ -167,19 +168,27 @@ final class UAP50_Advanced {
             }
             if ($nested) continue;
             $q = new DOMXPath($dom);
-            $titleNode = $q->query('.//*[@itemprop="name"] | .//h1 | .//h2 | .//h3 | .//a[contains(@class,"product")]', $card)->item(0);
+            $customTitle = !empty($selectors['title']) ? $this->css_to_xpath($selectors['title']) : '';
+            $titleNode = $customTitle ? $q->query($customTitle, $card)->item(0) : null;
+            if (!$titleNode) $titleNode = $q->query('.//*[@itemprop="name"] | .//h1 | .//h2 | .//h3 | .//a[contains(@class,"product")]', $card)->item(0);
             $title = $titleNode ? trim(preg_replace('/\s+/u', ' ', $titleNode->textContent)) : '';
             $linkNode = $q->query('.//a[@href]', $card)->item(0);
             $source = $linkNode ? $this->absolute($linkNode->getAttribute('href'), $url) : '';
             if (!$title && $linkNode) $title = trim(preg_replace('/\s+/u', ' ', $linkNode->textContent));
             if (!$title || !$source || !wp_http_validate_url($source)) continue;
-            $priceNode = $q->query('.//*[@itemprop="price"] | .//*[contains(translate(@class,"PRICE","price"),"price")]', $card)->item(0);
+            $customPrice = !empty($selectors['price']) ? $this->css_to_xpath($selectors['price']) : '';
+            $priceNode = $customPrice ? $q->query($customPrice, $card)->item(0) : null;
+            if (!$priceNode) $priceNode = $q->query('.//*[@itemprop="price"] | .//*[contains(translate(@class,"PRICE","price"),"price")]', $card)->item(0);
             $price = '';
             if ($priceNode) $price = $priceNode->getAttribute('content') ?: trim($priceNode->textContent);
-            $descNode = $q->query('.//*[@itemprop="description"] | .//p', $card)->item(0);
+            $customDescription = !empty($selectors['description']) ? $this->css_to_xpath($selectors['description']) : '';
+            $descNode = $customDescription ? $q->query($customDescription, $card)->item(0) : null;
+            if (!$descNode) $descNode = $q->query('.//*[@itemprop="description"] | .//p', $card)->item(0);
             $description = $descNode ? trim(preg_replace('/\s+/u', ' ', $descNode->textContent)) : '';
             $images = array();
-            foreach ($q->query('.//img[@src or @data-src or @data-lazy-src or @data-original]', $card) as $img) {
+            $customImage = !empty($selectors['image']) ? $this->css_to_xpath($selectors['image']) : '';
+            $imageNodes = $customImage ? $q->query($customImage, $card) : $q->query('.//img[@src or @data-src or @data-lazy-src or @data-original]', $card);
+            foreach ($imageNodes as $img) {
                 $raw = $img->getAttribute('data-src') ?: $img->getAttribute('data-lazy-src') ?: $img->getAttribute('data-original') ?: $img->getAttribute('src');
                 if (strpos($raw, ' ') !== false) $raw = strtok($raw, ' ');
                 $image = $this->absolute($raw, $url);
@@ -204,6 +213,7 @@ final class UAP50_Advanced {
                 'images' => $images,
                 'attributes' => $attrs,
                 'categories' => array(),
+                'tags' => array(),
                 'content_type' => 'product'
             );
             if (count($results) >= 100) break;
@@ -388,13 +398,16 @@ private function css_to_xpath($css) {
                 $id=$p->save();
             } else $id=wp_insert_post(array('post_type'=>$type,'post_status'=>$status,'post_title'=>$title,'post_content'=>$desc,'meta_input'=>array('_uap50_source_url'=>$source)),true);
             if (is_wp_error($id) || !$id) continue;
+            if ($type !== 'product' && !empty($item['categories']) && is_array($item['categories'])) { $term_ids=array(); foreach ($item['categories'] as $term_name) { $term=term_exists($term_name,'category'); if (!$term) $term=wp_insert_term($term_name,'category'); if (!is_wp_error($term)) $term_ids[]=(int)(is_array($term)?$term['term_id']:$term); } if ($term_ids) wp_set_post_categories($id,array_values(array_unique($term_ids)),false); }
+            if ($type !== 'product' && !empty($item['tags']) && is_array($item['tags'])) wp_set_post_tags($id,$item['tags'],false);
             $gallery=array(); foreach ((array)(isset($item['images'])?$item['images']:array()) as $idx=>$img) {
                 if ($idx>=15) break; if (!wp_http_validate_url($img)) continue;
                 require_once ABSPATH.'wp-admin/includes/media.php'; require_once ABSPATH.'wp-admin/includes/file.php'; require_once ABSPATH.'wp-admin/includes/image.php';
                 $att=media_sideload_image(esc_url_raw($img),$id,null,'id'); if (!is_wp_error($att) && $att) $gallery[]=(int)$att;
             }
+            $imageCount = count($gallery);
             if ($gallery) { set_post_thumbnail($id,array_shift($gallery)); if ($type==='product' && $gallery) update_post_meta($id,'_product_image_gallery',implode(',',$gallery)); }
-            $created[]=array('id'=>(int)$id,'title'=>$title,'images'=>count($gallery)+($gallery?1:0));
+            $created[]=array('id'=>(int)$id,'title'=>$title,'images'=>$imageCount);
         }
         wp_send_json_success(array('created'=>$created,'count'=>count($created),'duplicates'=>$dupes));
     }
