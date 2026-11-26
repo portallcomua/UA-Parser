@@ -379,13 +379,13 @@ UAP50JS;
         $profile=isset($_POST['profile'])?sanitize_key($_POST['profile']):'csv';
         $items=get_transient(self::ITEMS.get_current_user_id()); if (!is_array($items)) $items=array();
         $maps=array(
-            'prom'=>array('Назва_позиції'=>'title','Опис'=>'description','Ціна'=>'price','Посилання_зображення'=>'images','Код_товару'=>'sku','Посилання_джерела'=>'source_url'),
-            'rozetka'=>array('title_ua'=>'title','description_ua'=>'description','price'=>'price','images'=>'images','article'=>'sku','source_url'=>'source_url'),
-            'opencart'=>array('product_name'=>'title','description'=>'description','price'=>'price','image'=>'images','sku'=>'sku','source_url'=>'source_url'),
-            'virtuemart'=>array('product_sku'=>'sku','product_name'=>'title','product_desc'=>'description','product_price'=>'price','file_url'=>'images','source_url'=>'source_url'),
-            'joomshopping'=>array('product_name'=>'title','description'=>'description','product_price'=>'price','image'=>'images','product_ean'=>'sku','source_url'=>'source_url'),
-            'woocommerce'=>array('Type'=>'type','Name'=>'title','Published'=>'published','Description'=>'description','Regular price'=>'price','Images'=>'images','SKU'=>'sku','Categories'=>'categories'),
-            'wordpress'=>array('post_title'=>'title','post_content'=>'description','post_status'=>'status','post_type'=>'type','featured_image'=>'images','categories'=>'categories','source_url'=>'source_url')
+            'prom'=>array('Назва_позиції'=>'title','Опис'=>'description','Ціна'=>'price','Посилання_зображення'=>'images','Код_товару'=>'sku','Характеристики'=>'attributes','Варіанти'=>'variations','Посилання_джерела'=>'source_url'),
+            'rozetka'=>array('title_ua'=>'title','description_ua'=>'description','price'=>'price','images'=>'images','article'=>'sku','attributes'=>'attributes','variations'=>'variations','source_url'=>'source_url'),
+            'opencart'=>array('product_name'=>'title','description'=>'description','price'=>'price','image'=>'images','sku'=>'sku','attributes'=>'attributes','variations'=>'variations','source_url'=>'source_url'),
+            'virtuemart'=>array('product_sku'=>'sku','product_name'=>'title','product_desc'=>'description','product_price'=>'price','file_url'=>'images','attributes'=>'attributes','variations'=>'variations','source_url'=>'source_url'),
+            'joomshopping'=>array('product_name'=>'title','description'=>'description','product_price'=>'price','image'=>'images','product_ean'=>'sku','attributes'=>'attributes','variations'=>'variations','source_url'=>'source_url'),
+            'woocommerce'=>array('Type'=>'type','Name'=>'title','Published'=>'published','Description'=>'description','Regular price'=>'price','Images'=>'images','SKU'=>'sku','Categories'=>'categories','Attributes'=>'attributes','Variations'=>'variations'),
+            'wordpress'=>array('post_title'=>'title','post_content'=>'description','post_status'=>'status','post_type'=>'type','featured_image'=>'images','categories'=>'categories','attributes'=>'attributes','source_url'=>'source_url')
         );
         if (!isset($maps[$profile])) wp_send_json_error(array('message'=>'Невідомий профіль експорту.'),400);
         $delimiter = isset($_POST['delimiter']) ? substr(sanitize_text_field(wp_unslash($_POST['delimiter'])), 0, 1) : ';'; if ($delimiter === '') $delimiter = ';';
@@ -395,7 +395,8 @@ UAP50JS;
             $row=array();
             foreach ($maps[$profile] as $field) {
                 $v='';
-                if ($field==='sku') $v=isset($item['attributes']['sku'])?$item['attributes']['sku']:'';
+                if ($field==='sku') { $sku=isset($item['attributes']['sku'])?$item['attributes']['sku']:''; $v=is_array($sku)?implode('|',$sku):$sku; }
+                elseif ($field==='attributes' || $field==='variations') $v=wp_json_encode(isset($item[$field])?$item[$field]:array(), JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
                 elseif ($field==='categories') $v=implode('|',(array)(isset($item['categories'])?$item['categories']:array()));
                 elseif ($field==='images') $v=implode('|',(array)(isset($item['images'])?$item['images']:array()));
                 elseif ($field==='description') $v=wp_strip_all_tags(isset($item['description'])?$item['description']:'');
