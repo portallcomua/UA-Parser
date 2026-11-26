@@ -1,6 +1,7 @@
 jQuery(function ($) {
     'use strict';
     var collected = [];
+    var selected = [];
 
     function log(message) {
         var box = $('#uap50-log');
@@ -76,13 +77,27 @@ jQuery(function ($) {
         });
     });
 
+    $('#uap50-results').on('change', '.uap50-select', function () { selected = $('.uap50-select:checked').map(function(){ return this.value; }).get(); $('#uap50-publish').prop('disabled', !selected.length); });
+
+    $('#uap50-crawl').on('click', function () {
+        var url = $('#uap50-url').val().trim();
+        if (!url) return log('Вкажіть URL категорії або сторінки.');
+        progress(5, 'Скануємо пов’язані сторінки…');
+        call('uap50_crawl', {url: url}).done(function(response) {
+            if (!response.success) return log(response.data && response.data.message ? response.data.message : 'Помилка обходу.');
+            collected = response.data.items || []; render(); progress(100, 'Обхід завершено');
+            log('Перевірено сторінок: ' + response.data.scanned + '; додано нових матеріалів: ' + response.data.added + '.');
+        }).fail(function(xhr) { progress(0, 'Помилка'); log(xhr.responseJSON && xhr.responseJSON.data ? xhr.responseJSON.data.message : 'Не вдалося обійти сторінки.'); });
+    });
+
     $('#uap50-publish').on('click', function () {
         if (!collected.length) return;
         if (!window.confirm('Опублікувати зібрані матеріали на цьому сайті?')) return;
         progress(20, 'Публікуємо…');
         call('uap50_publish', {
             post_type: $('#uap50-type').val(),
-            post_status: $('#uap50-status').val()
+            post_status: $('#uap50-status').val(),
+            selected: $('.uap50-select:checked').map(function(){ return this.value; }).get()
         }).done(function (response) {
             if (!response.success) return log(response.data && response.data.message ? response.data.message : 'Помилка публікації.');
             progress(100, 'Публікацію завершено');
