@@ -1,0 +1,22 @@
+name: PHP syntax check
+
+on:
+  push:
+    branches:
+      - ua-parser-5.0-dev
+  pull_request:
+    branches:
+      - main
+      - ua-parser-5.0-dev
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+      - name: Lint plugin PHP
+        run: php -l ua-parser.php
