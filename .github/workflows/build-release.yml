@@ -1,0 +1,24 @@
+name: Build WordPress release ZIP
+on:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare canonical plugin folder
+        run: |
+          mkdir -p dist/ua-parser
+          cp ua-parser.php readme.txt dist/ua-parser/
+          cp -R assets includes dist/ua-parser/
+      - name: Create installable ZIP
+        run: cd dist && zip -r ../ua-parser.zip ua-parser
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ua-parser.zip
+          generate_release_notes: true
