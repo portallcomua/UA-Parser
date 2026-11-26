@@ -17,7 +17,7 @@ $('#uap50-preview').on('click',preview);
 window.addEventListener('message',function(ev){
  if(ev.source!==frame[0].contentWindow||!ev.data||!ev.data.uap50Selector)return;
  var d=ev.data.uap50Selector;
- var kind=window.prompt('До якого поля віднести вибраний елемент?\n title — назва\n description — опис\n price — ціна\n image — зображення\n brand — бренд\n sku — артикул\n attribute — атрибут','description');
+ var suggested=['title','description','price','image','brand','sku','attribute'].includes(d.suggestedField)?d.suggestedField:'description';var kind=window.prompt('Вибрано елемент <'+d.tag+'>. Вкажіть поле (тип визначено автоматично):\n title — назва\n description — опис\n price — ціна\n image — зображення\n brand — бренд\n sku — артикул\n attribute — атрибут',suggested);
  if(!kind)return;kind=kind.toLowerCase().trim();
  if(!['title','description','price','image','brand','sku','attribute'].includes(kind)){log('Невідомий тип поля.');return;}
  selectors[kind]=d.selector;
