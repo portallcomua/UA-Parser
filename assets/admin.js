@@ -36,6 +36,14 @@ jQuery(function ($) {
                 item.images.forEach(function (image) { html += '<img src="' + esc(image) + '" alt="" loading="lazy">'; });
                 html += '</div><small>Фото в галереї: ' + item.images.length + '</small>';
             }
+            html += '<details class="uap50-editor"><summary>Редагувати матеріал і галерею</summary>';
+            html += '<label>Назва<input class="uap50-edit-title" value="' + esc(item.title || '') + '"></label>';
+            html += '<label>Опис<textarea class="uap50-edit-description">' + esc(item.description || '') + '</textarea></label>';
+            html += '<label>Ціна<input class="uap50-edit-price" value="' + esc(item.price || '') + '"></label>';
+            html += '<label>Фото галереї — одне URL на рядок<textarea class="uap50-edit-images">' + esc((item.images || []).join('\n')) + '</textarea></label>';
+            html += '<label>Атрибути — JSON<textarea class="uap50-edit-attributes">' + esc(JSON.stringify(item.attributes || {}, null, 2)) + '</textarea></label>';
+            html += '<label>Варіації — JSON<textarea class="uap50-edit-variations">' + esc(JSON.stringify(item.variations || [], null, 2)) + '</textarea></label>';
+            html += '<button type="button" class="button uap50-save-item">Зберегти зміни</button></details>';
             if (item.attributes) {
                 html += '<dl class="uap50-attributes">';
                 Object.keys(item.attributes).forEach(function (key) {
@@ -81,6 +89,7 @@ jQuery(function ($) {
         call('uap50_collect', {url: url}).done(function (response) {
             if (!response.success) return log(response.data && response.data.message ? response.data.message : 'Помилка збору.');
             collected = response.data.items || [];
+            window.UAP50Collected = collected;
             render();
             progress(100, 'Збір завершено');
             log('Зібрано записів у тимчасовому наборі: ' + collected.length);
@@ -98,7 +107,7 @@ jQuery(function ($) {
         progress(5, 'Скануємо пов’язані сторінки…');
         call('uap50_crawl', {url: url}).done(function(response) {
             if (!response.success) return log(response.data && response.data.message ? response.data.message : 'Помилка обходу.');
-            collected = response.data.items || []; render(); progress(100, 'Обхід завершено');
+            collected = response.data.items || []; window.UAP50Collected = collected; render(); progress(100, 'Обхід завершено');
             log('Перевірено сторінок: ' + response.data.scanned + '; додано нових матеріалів: ' + response.data.added + '.');
         }).fail(function(xhr) { progress(0, 'Помилка'); log(xhr.responseJSON && xhr.responseJSON.data ? xhr.responseJSON.data.message : 'Не вдалося обійти сторінки.'); });
     });
