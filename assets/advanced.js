@@ -17,9 +17,9 @@ $('#uap50-preview').on('click',preview);
 window.addEventListener('message',function(ev){
  if(ev.source!==frame[0].contentWindow||!ev.data||!ev.data.uap50Selector)return;
  var d=ev.data.uap50Selector;
- var suggested=['title','description','price','image','brand','sku','attribute'].includes(d.suggestedField)?d.suggestedField:'description';var kind=window.prompt('Вибрано елемент <'+d.tag+'>. Вкажіть поле (тип визначено автоматично):\n title — назва\n description — опис\n price — ціна\n image — зображення\n brand — бренд\n sku — артикул\n attribute — атрибут',suggested);
+ var suggested=['title','description','price','image','brand','sku','color','size','material','attribute'].includes(d.suggestedField)?d.suggestedField:'description';var kind=window.prompt('Вибрано елемент <'+d.tag+'>. Вкажіть поле (тип визначено автоматично):\n title — назва\n description — опис\n price — ціна\n image — зображення\n brand — бренд\n sku — артикул\n color — колір\n size — розмір\n material — матеріал\n attribute — інша характеристика',suggested);
  if(!kind)return;kind=kind.toLowerCase().trim();
- if(!['title','description','price','image','brand','sku','attribute'].includes(kind)){log('Невідомий тип поля.');return;}
+ if(!['title','description','price','image','brand','sku','color','size','material','attribute'].includes(kind)){log('Невідомий тип поля.');return;}
  selectors[kind]=d.selector;
  req('uap50_selector_extract',{url:sourceUrl,selector:d.selector}).done(function(r){
   if(!r.success){log(r.data.message||'Не вдалося перевірити селектор.');return;}
