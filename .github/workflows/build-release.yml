@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Git tag, e.g. v5.0.0-beta.7'
+        description: 'Git tag, e.g. v5.0.0-beta.8'
         required: false
         default: ''
   pull_request:
@@ -50,7 +50,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/ua-parser-5.0-rebuild' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v5.0.0-beta.7' }}
+          tag_name: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v5.0.0-beta.8' }}
           target_commitish: ua-parser-5.0-rebuild
           prerelease: true
           overwrite_files: true
