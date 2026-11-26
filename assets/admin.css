@@ -5,3 +5,5 @@
 @media(max-width:782px){.uap50-visual iframe{height:65vh;min-height:360px}}
 
 .uap50-gallery{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.uap50-gallery img{width:68px;height:68px;object-fit:cover;border:1px solid #dcdcde;border-radius:5px}.uap50-attributes{display:grid;grid-template-columns:minmax(70px,auto) 1fr;gap:3px 8px;margin:8px 0;font-size:12px}.uap50-attributes dt{font-weight:600}.uap50-attributes dd{margin:0;overflow-wrap:anywhere}
+
+.uap50-editor{border-top:1px solid #dcdcde;margin-top:10px;padding-top:8px}.uap50-editor summary{cursor:pointer;font-weight:600;margin-bottom:8px}.uap50-editor label{display:block;font-size:12px;font-weight:600;margin:8px 0}.uap50-editor input,.uap50-editor textarea{display:block;width:100%;max-width:100%;box-sizing:border-box;margin-top:4px}.uap50-editor textarea{min-height:68px;font-family:monospace;font-size:12px}.uap50-editor .uap50-edit-description{min-height:110px}.uap50-editor .uap50-edit-images{min-height:90px}
