@@ -88,6 +88,7 @@ final class UAP50_Advanced {
         $price = $pick(isset($selectors['price'])?$selectors['price']:'', '//*[@itemprop="price"] | //*[contains(@class,"price") or contains(@class,"Price")]');
 
         // Structured data is more reliable than guessing from visual CSS classes.
+        $attrs = array();
         $structured = array();
         foreach ($xp->query('//script[@type="application/ld+json"]') as $jsonNode) {
             $decoded = json_decode(trim($jsonNode->textContent), true);
@@ -123,10 +124,9 @@ final class UAP50_Advanced {
         if (!empty($selectors['image'])) { $ix=$this->css_to_xpath($selectors['image']); if ($ix) foreach ($xp->query($ix) as $im) { $v=($im instanceof DOMElement)?($im->getAttribute('src')?:$im->getAttribute('data-src')):$im->nodeValue; $u=$this->absolute($v,$url); if ($u) $images[]=$u; } }
         $queries = array('//meta[@property="og:image"]/@content','//meta[@name="twitter:image"]/@content','//img[@src]/@src','//img[@data-src]/@data-src','//img[@data-lazy-src]/@data-lazy-src','//img[@data-original]/@data-original','//img[@srcset]/@srcset','//a[contains(@class,"gallery")]/@href');
         foreach ($queries as $q) foreach ($xp->query($q) as $n) {
-            $u=$this->absolute($n->nodeValue,$url); if ($u && !in_array($u,$images,true)) $images[]=$u;
+            $rawImage = trim((string) $n->nodeValue); if (strpos($rawImage, ',') !== false && strpos($rawImage, ' ') !== false) $rawImage = trim(strtok($rawImage, ',')); if (strpos($rawImage, ' ') !== false) $rawImage = strtok($rawImage, ' '); $u=$this->absolute($rawImage,$url); if ($u && !in_array($u,$images,true)) $images[]=$u;
             if (count($images)>=30) break 2;
         }
-        if (!isset($attrs)) $attrs = array();
         foreach ($xp->query('//*[@itemprop="brand"] | //*[@itemprop="sku"] | //*[@itemprop="color"] | //*[@itemprop="size"] | //*[@itemprop="gtin13"]') as $n) {
             $key = $n->getAttribute('itemprop'); $val = trim($n->getAttribute('content') ?: $n->textContent);
             if ($key && $val) $attrs[$key] = sanitize_text_field($val);
