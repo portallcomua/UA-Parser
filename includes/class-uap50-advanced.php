@@ -26,7 +26,7 @@ final class UAP50_Advanced {
 
     public function assets($hook) {
         if ($hook !== 'toplevel_page_ua-parser') return;
-        wp_enqueue_script('uap50-advanced', plugin_dir_url(dirname(__FILE__)) . 'assets/advanced.js', array('jquery', 'uap50'), '5.0.0-beta.2', true);
+        wp_enqueue_script('uap50-advanced', plugin_dir_url(dirname(__FILE__)) . 'assets/advanced.js', array('jquery', 'uap50'), '5.0.0-beta.3', true);
     }
 
     private function auth() {
@@ -86,14 +86,47 @@ final class UAP50_Advanced {
         $title = $pick(isset($selectors['title'])?$selectors['title']:'', '//h1 | //meta[@property="og:title"]/@content | //title');
         $description = $pick(isset($selectors['description'])?$selectors['description']:'', '//meta[@name="description"]/@content | //article | //main');
         $price = $pick(isset($selectors['price'])?$selectors['price']:'', '//*[@itemprop="price"] | //*[contains(@class,"price") or contains(@class,"Price")]');
+
+        // Structured data is more reliable than guessing from visual CSS classes.
+        $structured = array();
+        foreach ($xp->query('//script[@type="application/ld+json"]') as $jsonNode) {
+            $decoded = json_decode(trim($jsonNode->textContent), true);
+            if (is_array($decoded)) {
+                $stack = array($decoded);
+                while ($stack) {
+                    $candidate = array_pop($stack);
+                    if (!is_array($candidate)) continue;
+                    if (isset($candidate['@graph']) && is_array($candidate['@graph'])) foreach ($candidate['@graph'] as $graphNode) $stack[] = $graphNode;
+                    $types = isset($candidate['@type']) ? (array) $candidate['@type'] : array();
+                    if (!$structured && array_intersect($types, array('Product','ProductGroup','Article','NewsArticle','BlogPosting','WebPage'))) $structured = $candidate;
+                    if (isset($candidate[0]) && is_array($candidate[0])) foreach ($candidate as $child) $stack[] = $child;
+                }
+            }
+        }
+        if (!$title && !empty($structured['name'])) $title = is_string($structured['name']) ? $structured['name'] : '';
+        if (!$title && !empty($structured['headline'])) $title = (string) $structured['headline'];
+        if (!$description && !empty($structured['description'])) $description = (string) $structured['description'];
+        if (!$price && !empty($structured['offers'])) {
+            $offers = isset($structured['offers'][0]) ? $structured['offers'][0] : $structured['offers'];
+            if (is_array($offers) && isset($offers['price'])) $price = (string) $offers['price'] . (!empty($offers['priceCurrency']) ? ' ' . $offers['priceCurrency'] : '');
+        }
+        if (!empty($structured['sku'])) $attrs['sku'] = sanitize_text_field((string) $structured['sku']);
+        if (!empty($structured['brand'])) $attrs['brand'] = sanitize_text_field(is_array($structured['brand']) ? (isset($structured['brand']['name']) ? $structured['brand']['name'] : '') : $structured['brand']);
         $images = array();
+        if (!empty($structured['image'])) {
+            foreach ((array) $structured['image'] as $structuredImage) {
+                $imageUrl = is_array($structuredImage) ? (isset($structuredImage['url']) ? $structuredImage['url'] : (isset($structuredImage['contentUrl']) ? $structuredImage['contentUrl'] : '')) : $structuredImage;
+                $absoluteImage = $this->absolute($imageUrl, $url);
+                if ($absoluteImage) $images[] = $absoluteImage;
+            }
+        }
         if (!empty($selectors['image'])) { $ix=$this->css_to_xpath($selectors['image']); if ($ix) foreach ($xp->query($ix) as $im) { $v=($im instanceof DOMElement)?($im->getAttribute('src')?:$im->getAttribute('data-src')):$im->nodeValue; $u=$this->absolute($v,$url); if ($u) $images[]=$u; } }
-        $queries = array('//meta[@property="og:image"]/@content','//img[@src]/@src','//img[@data-src]/@data-src','//a[contains(@class,"gallery")]/@href');
+        $queries = array('//meta[@property="og:image"]/@content','//meta[@name="twitter:image"]/@content','//img[@src]/@src','//img[@data-src]/@data-src','//img[@data-lazy-src]/@data-lazy-src','//img[@data-original]/@data-original','//img[@srcset]/@srcset','//a[contains(@class,"gallery")]/@href');
         foreach ($queries as $q) foreach ($xp->query($q) as $n) {
             $u=$this->absolute($n->nodeValue,$url); if ($u && !in_array($u,$images,true)) $images[]=$u;
             if (count($images)>=30) break 2;
         }
-        $attrs = array();
+        if (!isset($attrs)) $attrs = array();
         foreach ($xp->query('//*[@itemprop="brand"] | //*[@itemprop="sku"] | //*[@itemprop="color"] | //*[@itemprop="size"] | //*[@itemprop="gtin13"]') as $n) {
             $key = $n->getAttribute('itemprop'); $val = trim($n->getAttribute('content') ?: $n->textContent);
             if ($key && $val) $attrs[$key] = sanitize_text_field($val);
