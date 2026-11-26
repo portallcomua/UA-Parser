@@ -243,8 +243,17 @@ final class UAP50_Data {
         );
     }
 
+    private static function safe_remote_image($url) {
+        $url = esc_url_raw((string)$url, array('http','https'));
+        if (!$url || !wp_http_validate_url($url)) return false;
+        $host = strtolower((string)wp_parse_url($url, PHP_URL_HOST));
+        if (!$host || $host === 'localhost' || substr($host,-6) === '.local') return false;
+        $ip = filter_var($host,FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
+        return $ip !== $host && filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE) !== false;
+    }
+
     private static function sideload($url, $post_id) {
-        if (!wp_http_validate_url($url)) return 0;
+        if (!self::safe_remote_image($url)) return 0;
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
