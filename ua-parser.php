@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: UA Parser
- * Description: Збір даних з однієї публічної сторінки та базова публікація у WordPress/WooCommerce.
- * Version: 5.0.0-beta.1
+ * Description: Візуальний збір вебконтенту, черга сторінок, CMS-профілі та публікація у WordPress/WooCommerce.
+ * Version: 5.0.0-beta.2
  * Author: portallcomua
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 if (!defined('ABSPATH')) exit;
 
 final class UA_Parser_50 {
-    const VERSION = '5.0.0-beta.1';
+    const VERSION = '5.0.0-beta.2';
     const NONCE = 'uap50_nonce';
     const STORE = 'uap50_items_';
 
@@ -55,7 +55,7 @@ final class UA_Parser_50 {
                     <button class="button button-primary" id="uap50-collect">Зібрати сторінку</button>
                     <button class="button" id="uap50-crawl">Зібрати пов’язані сторінки</button>
                 </div>
-                <p class="description">Alpha.1 обробляє одну сторінку за раз. Перевіряйте права на використання контенту джерела.</p>
+                <p class="description">Візуально оберіть поля на сторінці, запустіть фонову пакетну чергу та збережіть профіль.</p>
             </section>
             <section class="uap50-card">
                 <div class="uap50-progress-label"><b id="uap50-status">Очікування</b><span id="uap50-percent">0%</span></div>
@@ -80,7 +80,7 @@ final class UA_Parser_50 {
                 </div>
             </section>
             <section class="uap50-card"><h2>Журнал</h2><pre id="uap50-log">UA Parser готовий.</pre></section>
-            <p class="description">Beta 1: одиночний збір, обмежений обхід пов’язаних сторінок (до 20), вибір позицій для публікації, CSV та базова публікація.</p>
+            <p class="description">Beta 2: візуальний селектор, відновлювана черга пакетного обходу з пошуком пагінації, профілі експорту та розширена публікація.</p>
         </div>
         <?php
     }
@@ -339,4 +339,4 @@ final class UA_Parser_50 {
         exit;
     }
 }
-new UA_Parser_50();
+new UA_Parser_50();\nrequire_once __DIR__ . '/includes/class-uap50-advanced.php';
