@@ -153,14 +153,14 @@ private function css_to_xpath($css) {
         if (is_wp_error($safe)) wp_send_json_error(array('message'=>$safe->get_error_message()),400);
         $uid=get_current_user_id(); $key=self::QUEUE.$uid;
         $selectors=isset($_POST['selectors'])?json_decode(wp_unslash($_POST['selectors']),true):array(); if (!is_array($selectors)) $selectors=array();
-        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors),DAY_IN_SECONDS);
+        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors,'start_url'=>$safe),DAY_IN_SECONDS);
         wp_send_json_success(array('started'=>true));
     }
 
     public function queue_status() {
         $this->auth(); $q=get_transient(self::QUEUE.get_current_user_id());
         if (!is_array($q)) wp_send_json_success(array('active'=>false));
-        wp_send_json_success(array('active'=>empty($q['done']),'scanned'=>(int)$q['scanned'],'remaining'=>count($q['queue']),'added'=>(int)$q['added']));
+        wp_send_json_success(array('active'=>empty($q['done']),'scanned'=>(int)$q['scanned'],'remaining'=>count($q['queue']),'added'=>(int)$q['added'],'url'=>isset($q['start_url'])?$q['start_url']:''));
     }
 
     public function queue_step() {
