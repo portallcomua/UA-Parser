@@ -2,7 +2,7 @@
 /**
  * Plugin Name: UA Parser
  * Description: Візуальний збір вебконтенту, черга сторінок, CMS-профілі та публікація у WordPress/WooCommerce.
- * Version: 5.0.0-beta.2
+ * Version: 5.0.0-beta.3
  * Author: portallcomua
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 if (!defined('ABSPATH')) exit;
 
 final class UA_Parser_50 {
-    const VERSION = '5.0.0-beta.2';
+    const VERSION = '5.0.0-beta.3';
     const NONCE = 'uap50_nonce';
     const STORE = 'uap50_items_';
 
@@ -45,7 +45,7 @@ final class UA_Parser_50 {
         if (!current_user_can('manage_options')) return;
         ?>
         <div class="wrap uap50">
-            <h1>UA Parser <small>5.0 beta.2</small></h1>
+            <h1>UA Parser <small>5.0 beta.3</small></h1>
             <p>Збір даних з публічної сторінки та публікація результатів на цьому WordPress-сайті.</p>
             <section class="uap50-card">
                 <label for="uap50-url"><b>URL сайту або сторінки</b></label>
@@ -84,7 +84,7 @@ final class UA_Parser_50 {
                         <option value="page">Сторінки WordPress</option>
                         <option value="product">Товари WooCommerce</option>
                     </select>
-                    <select id="uap50-status">
+                    <select id="uap50-post-status">
                         <option value="draft">Чернетка</option>
                         <option value="publish">Опублікувати одразу</option>
                     </select>
@@ -352,4 +352,65 @@ final class UA_Parser_50 {
     }
 }
 new UA_Parser_50();
+
+/** GitHub Releases updater. Expects a release asset named ua-parser.zip. */
+final class UAP50_GitHub_Updater {
+    const API = 'https://api.github.com/repos/portallcomua/UA-Parser/releases/latest';
+    const REPO = 'https://github.com/portallcomua/UA-Parser';
+    private $plugin_file;
+    public function __construct() {
+        $this->plugin_file = plugin_basename(__FILE__);
+        add_filter('pre_set_site_transient_update_plugins', array($this, 'inject_update'));
+        add_filter('plugins_api', array($this, 'plugin_info'), 20, 3);
+    }
+    private function release() {
+        $cached = get_site_transient('uap50_github_release');
+        if ($cached !== false) return $cached;
+        $response = wp_remote_get(self::API, array('timeout' => 8, 'headers' => array('Accept' => 'application/vnd.github+json', 'User-Agent' => 'UA-Parser-WordPress-Updater')));
+        if (is_wp_error($response) || 200 !== (int) wp_remote_retrieve_response_code($response)) {
+            set_site_transient('uap50_github_release', array(), 15 * MINUTE_IN_SECONDS);
+            return array();
+        }
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($data) || empty($data['tag_name']) || !empty($data['draft']) || !empty($data['prerelease'])) {
+            set_site_transient('uap50_github_release', array(), HOUR_IN_SECONDS);
+            return array();
+        }
+        $package = '';
+        if (!empty($data['assets']) && is_array($data['assets'])) {
+            foreach ($data['assets'] as $asset) {
+                if (!empty($asset['name']) && $asset['name'] === 'ua-parser.zip' && !empty($asset['browser_download_url'])) {
+                    $package = esc_url_raw($asset['browser_download_url']);
+                    break;
+                }
+            }
+        }
+        $release = array('version' => ltrim(sanitize_text_field($data['tag_name']), 'vV'), 'package' => $package, 'html_url' => !empty($data['html_url']) ? esc_url_raw($data['html_url']) : self::REPO, 'body' => !empty($data['body']) ? wp_kses_post($data['body']) : '');
+        set_site_transient('uap50_github_release', $release, 6 * HOUR_IN_SECONDS);
+        return $release;
+    }
+    public function inject_update($transient) {
+        if (!is_object($transient) || empty($transient->checked)) return $transient;
+        $release = $this->release();
+        if (empty($release['version']) || empty($release['package'])) return $transient;
+        if (version_compare($release['version'], UA_Parser_50::VERSION, '>')) {
+            $transient->response[$this->plugin_file] = (object) array('slug' => 'ua-parser', 'plugin' => $this->plugin_file, 'new_version' => $release['version'], 'url' => self::REPO, 'package' => $release['package'], 'tested' => '6.8', 'requires_php' => '7.4');
+        }
+        return $transient;
+    }
+    public function plugin_info($result, $action, $args) {
+        if ($action !== 'plugin_information' || empty($args->slug) || $args->slug !== 'ua-parser') return $result;
+        $release = $this->release();
+        $info = new stdClass();
+        $info->name = 'UA Parser'; $info->slug = 'ua-parser';
+        $info->version = !empty($release['version']) ? $release['version'] : UA_Parser_50::VERSION;
+        $info->author = '<a href="https://github.com/portallcomua">portallcomua</a>';
+        $info->homepage = self::REPO; $info->download_link = !empty($release['package']) ? $release['package'] : '';
+        $info->requires = '6.0'; $info->requires_php = '7.4'; $info->tested = '6.8';
+        $info->sections = array('description' => 'Універсальний збір публічного вебконтенту та перенесення даних у WordPress/WooCommerce.', 'changelog' => !empty($release['body']) ? $release['body'] : 'Інформація про зміни доступна у GitHub Releases.');
+        return $info;
+    }
+}
+new UAP50_GitHub_Updater();
+
 require_once __DIR__ . '/includes/class-uap50-advanced.php';
