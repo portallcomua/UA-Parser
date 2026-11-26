@@ -32,7 +32,8 @@ window.addEventListener('message',function(ev){
 $('#uap50-selector-fields').on('click','.uap50-remove-selector',function(){delete selectors[$(this).data('kind')];$(this).closest('.uap50-selector-row').remove();});
 $('#uap50-save-profile').on('click',function(){
  var name=window.prompt('Назва профілю збору:');if(!name)return;
- req('uap50_profile_save',{name:name,data:{url:sourceUrl,selectors:selectors}}).done(function(r){if(r.success){log('Профіль «'+name+'» збережено.');loadProfiles();}else log(r.data.message||'Помилка збереження профілю.');});
+ req('uap50_profile_save',{name:name,data:{url:sourceUrl,selectors:selectors}}).done(function(r){if(r.success){log('Профіль «'+name+'» збережено.');$('#uap50-export-profile-btn').on('click',function(){var form=$('<form method="post"></form>').attr('action',UAP50.ajax);form.append($('<input type="hidden" name="action">').val('uap50_export_profile'));form.append($('<input type="hidden" name="nonce">').val(UAP50.nonce));form.append($('<input type="hidden" name="profile">').val($('#uap50-export-profile').val()));$('body').append(form);form.trigger('submit');form.remove();});
+loadProfiles();}else log(r.data.message||'Помилка збереження профілю.');});
 });
 function loadProfiles(){req('uap50_profile_list').done(function(r){if(!r.success)return;var s=$('#uap50-profile-list').empty().append('<option value="">Виберіть профіль</option>');$.each(r.data.profiles||{},function(id,p){s.append($('<option>').val(id).text(p.name));});});}
 $('#uap50-profile-list').on('change',function(){var id=$(this).val();if(!id)return;req('uap50_profile_list').done(function(r){var p=r.data.profiles[id];if(!p)return;selectors=p.data.selectors||{};if(p.data.url)$('#uap50-url').val(p.data.url);sourceUrl=p.data.url||sourceUrl;$('#uap50-selector-fields').html('<p>Завантажено селекторів: '+Object.keys(selectors).length+'. Натисніть «Завантажити попередній перегляд» для перевірки.</p>');});});
