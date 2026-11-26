@@ -180,8 +180,8 @@ private function css_to_xpath($css) {
                 if ($next) { $n=$this->absolute($next->nodeValue,$url); if ($n && strtolower((string)wp_parse_url($n,PHP_URL_HOST))===$baseHost && empty($q['seen'][$n])) $q['queue'][]=$n; }
                 foreach ($xp->query('//a[@href]') as $a) {
                     $href=$this->absolute($a->getAttribute('href'),$url); if (!$href || strtolower((string)wp_parse_url($href,PHP_URL_HOST))!==$baseHost || isset($q['seen'][$href])) continue;
-                    $label=strtolower(trim($a->textContent)); $path=(string)wp_parse_url($href,PHP_URL_PATH);
-                    if (preg_match('/(page|pagina|страниц|next|наступ|older|›|»)/iu',$label.' '.$path) && count($q['seen'])+count($q['queue'])<500) $q['queue'][]=$href;
+                    $label=strtolower(trim($a->textContent)); $path=(string)wp_parse_url($href,PHP_URL_PATH); $query=(string)wp_parse_url($href,PHP_URL_QUERY); $parentClass=$a->parentNode instanceof DOMElement ? strtolower($a->parentNode->getAttribute('class')) : '';
+                    if (preg_match('/(page|pagina|страниц|next|наступ|older|›|»|page=|paged=|offset=)/iu',$label.' '.$path.' '.$query.' '.$parentClass) && count($q['seen'])+count($q['queue'])<500) $q['queue'][]=$href;
                 }
             }
         }
