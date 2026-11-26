@@ -355,7 +355,7 @@ new UA_Parser_50();
 
 /** GitHub Releases updater. Expects a release asset named ua-parser.zip. */
 final class UAP50_GitHub_Updater {
-    const API = 'https://api.github.com/repos/portallcomua/UA-Parser/releases/latest';
+    const API = 'https://api.github.com/repos/portallcomua/UA-Parser/releases?per_page=10';
     const REPO = 'https://github.com/portallcomua/UA-Parser';
     private $plugin_file;
     public function __construct() {
@@ -371,8 +371,16 @@ final class UAP50_GitHub_Updater {
             set_site_transient('uap50_github_release', array(), 15 * MINUTE_IN_SECONDS);
             return array();
         }
-        $data = json_decode(wp_remote_retrieve_body($response), true);
-        if (!is_array($data) || empty($data['tag_name']) || !empty($data['draft']) || !empty($data['prerelease'])) {
+        $releases = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($releases)) {
+            set_site_transient('uap50_github_release', array(), HOUR_IN_SECONDS);
+            return array();
+        }
+        $data = array();
+        foreach ($releases as $candidate) {
+            if (is_array($candidate) && !empty($candidate['tag_name']) && empty($candidate['draft'])) { $data = $candidate; break; }
+        }
+        if (!$data) {
             set_site_transient('uap50_github_release', array(), HOUR_IN_SECONDS);
             return array();
         }
