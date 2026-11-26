@@ -72,6 +72,7 @@ final class UAP50_Advanced {
     }
 
     private function extract_item($html, $url, $selectors = array()) {
+        return UAP50_Data::extract($html, $url, $selectors);
         $parsed = $this->dom($html); if (!$parsed) return new WP_Error('html','HTML не розібрано.');
         list($dom,$xp) = $parsed;
         $pick = function($selector, $fallback) use ($dom,$xp) {
@@ -418,6 +419,19 @@ UAP50JS;
         if (!in_array($type,array('product','post','page'),true)) wp_send_json_error(array('message'=>'Непідтримуваний тип.'),400); if ($type==='product' && !class_exists('WooCommerce')) wp_send_json_error(array('message'=>'Для публікації товарів потрібен WooCommerce.'),400);
         if (!in_array($status,array('draft','publish'),true)) $status='draft';
         $created=array(); $dupes=0;
+        if ($type === 'product') {
+            foreach ($items as $item) {
+                $published = UAP50_Data::publish_woocommerce($item, $status);
+                if (is_wp_error($published)) {
+                    $created[] = array('id'=>0,'title'=>isset($item['title'])?$item['title']:'','error'=>$published->get_error_message());
+                } elseif (!empty($published['duplicate'])) {
+                    $dupes++;
+                } else {
+                    $created[] = array('id'=>$published['id'],'title'=>$published['title'],'images'=>$published['images'],'variations'=>$published['variations']);
+                }
+            }
+            wp_send_json_success(array('created'=>$created,'count'=>count(array_filter($created,function($x){return !empty($x['id']);})),'duplicates'=>$dupes));
+        }
         foreach ($items as $item) {
             $source=esc_url_raw(isset($item['source_url'])?$item['source_url']:''); if (!$source) continue;
             $found=get_posts(array('post_type'=>$type==='product'?'product':$type,'post_status'=>'any','meta_key'=>'_uap50_source_url','meta_value'=>$source,'fields'=>'ids','numberposts'=>1));
