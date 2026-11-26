@@ -124,10 +124,21 @@ final class UAP50_Data {
             if (is_array($im)) $im = isset($im['url']) ? $im['url'] : (isset($im['contentUrl']) ? $im['contentUrl'] : '');
             $add_image($im);
         }
-        foreach ($xp->query('//meta[@property="og:image" or @name="twitter:image"]/@content | //img[@src or @srcset or @data-src or @data-lazy-src or @data-original or @data-large_image] | //picture/source[@srcset] | //a[contains(translate(@class,"GALLERY","gallery"),"gallery") or contains(translate(@rel,"IMAGE","image"),"image")][@href]') as $node) {
-            $add_image(self::image_from_node($node, $url));
+        foreach ($xp->query('//meta[@property="og:image" or @name="twitter:image"]/@content | //meta[@property="og:image:secure_url"]/@content') as $node) $add_image(self::image_from_node($node, $url));
+        // Prefer actual product/article gallery containers over unrelated header/footer images.
+        $gallery_query = '//*[contains(translate(@class,"GALLERY","gallery"),"gallery") or contains(translate(@id,"GALLERY","gallery"),"gallery") or contains(translate(@class,"PRODUCT-IMAGES","product-images"),"product-images") or contains(translate(@class,"PRODUCT-THUMBNAILS","product-thumbnails"),"product-thumbnails")]//img[@src or @srcset or @data-src or @data-lazy-src or @data-original or @data-large_image] | //a[contains(translate(@class,"GALLERY","gallery"),"gallery")][@href]';
+        foreach ($xp->query($gallery_query) as $node) $add_image(self::image_from_node($node, $url));
+        foreach ($xp->query('//*[@itemprop="image"] | //main//img[@src or @srcset or @data-src or @data-lazy-src or @data-original] | //article//img[@src or @srcset or @data-src or @data-lazy-src or @data-original] | //picture/source[@srcset]') as $node) $add_image(self::image_from_node($node, $url));
+        if (count($images) < 2) {
+            foreach ($xp->query('//img[@src or @data-src or @data-lazy-src or @data-original][not(ancestor::header or ancestor::footer or ancestor::nav)]') as $node) {
+                if ($node instanceof DOMElement) {
+                    $w = (int)$node->getAttribute('width'); $h = (int)$node->getAttribute('height');
+                    if (($w && $w < 80) || ($h && $h < 80)) continue;
+                }
+                $add_image(self::image_from_node($node, $url));
+                if (count($images) >= 20) break;
+            }
         }
-        foreach ($xp->query('//*[@itemprop="image"]') as $node) $add_image(self::image_from_node($node, $url));
         if (!empty($selectors['image'])) {
             $image_xpath = self::css_xpath($selectors['image']);
             if ($image_xpath) foreach (@$xp->query($image_xpath) as $node) $add_image(self::image_from_node($node, $url));
