@@ -59,5 +59,12 @@ var oldPublish=$('#uap50-publish').clone();$('#uap50-publish').off('click').on('
  if(!window.confirm('Опублікувати зібрані матеріали?'))return;
  req('uap50_publish_advanced',{post_type:$('#uap50-type').val(),post_status:$('#uap50-status').val(),selected:$('.uap50-advanced-select:checked').map(function(){return this.value;}).get()}).done(function(r){if(!r.success){log(r.data.message||'Помилка публікації.');return;}log('Публікація: створено '+r.data.count+', дублікатів пропущено '+r.data.duplicates+'.');(r.data.created||[]).forEach(function(x){log('Створено #'+x.id+' '+x.title+'; зображень: '+x.images);});}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка публікації.');});
 });
+$('#uap50-export-profile-btn').on('click',function(){
+ var form=$('<form method="post"></form>').attr('action',UAP50.ajax);
+ form.append($('<input type="hidden" name="action">').val('uap50_export_profile'));
+ form.append($('<input type="hidden" name="nonce">').val(UAP50.nonce));
+ form.append($('<input type="hidden" name="profile">').val($('#uap50-export-profile').val()));
+ $('body').append(form);form.trigger('submit');form.remove();
+});
 loadProfiles();
 });
