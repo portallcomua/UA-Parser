@@ -45,7 +45,7 @@ final class UA_Parser_50 {
         if (!current_user_can('manage_options')) return;
         ?>
         <div class="wrap uap50">
-            <h1>UA Parser <small>5.0 beta.1</small></h1>
+            <h1>UA Parser <small>5.0 beta.2</small></h1>
             <p>Збір даних з публічної сторінки та публікація результатів на цьому WordPress-сайті.</p>
             <section class="uap50-card">
                 <label for="uap50-url"><b>URL сайту або сторінки</b></label>
@@ -56,6 +56,18 @@ final class UA_Parser_50 {
                     <button class="button" id="uap50-crawl">Зібрати пов’язані сторінки</button>
                 </div>
                 <p class="description">Візуально оберіть поля на сторінці, запустіть фонову пакетну чергу та збережіть профіль.</p>
+            </section>
+            <section class="uap50-card uap50-visual">
+                <h2>Візуальний конструктор</h2>
+                <p>Завантажте попередній перегляд та натисніть на елементи сторінки. Вибрані поля можна зберегти як профіль.</p>
+                <div class="uap50-row">
+                    <button class="button" id="uap50-preview">Завантажити попередній перегляд</button>
+                    <button class="button button-primary" id="uap50-save-profile">Зберегти профіль</button>
+                    <select id="uap50-profile-list"><option value="">Виберіть профіль</option></select>
+                </div>
+                <div id="uap50-selector-fields"></div>
+                <iframe id="uap50-preview-frame" title="Попередній перегляд джерела" sandbox="allow-scripts"></iframe>
+                <div id="uap50-advanced-results"></div>
             </section>
             <section class="uap50-card">
                 <div class="uap50-progress-label"><b id="uap50-status">Очікування</b><span id="uap50-percent">0%</span></div>
