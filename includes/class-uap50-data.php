@@ -139,6 +139,17 @@ final class UAP50_Data {
             $brand = is_array($structured['brand']) && isset($structured['brand']['name']) ? $structured['brand']['name'] : $structured['brand'];
             if (is_scalar($brand)) self::add_value($attrs, 'brand', $brand);
         }
+        foreach (array('brand'=>'brand','sku'=>'sku','color'=>'color','size'=>'size','material'=>'material','attribute'=>'характеристика') as $field=>$label) {
+            if (empty($selectors[$field])) continue;
+            $selector_xpath = self::css_xpath($selectors[$field]);
+            if (!$selector_xpath) continue;
+            foreach (@$xp->query($selector_xpath) as $selected_node) {
+                $selected_value = $selected_node instanceof DOMElement
+                    ? ($selected_node->getAttribute('content') ?: $selected_node->getAttribute('data-value') ?: $selected_node->getAttribute('aria-label') ?: $selected_node->getAttribute('title') ?: $selected_node->textContent)
+                    : $selected_node->nodeValue;
+                self::add_value($attrs, $label, $selected_value);
+            }
+        }
         foreach (array('sku'=>'sku','brand'=>'brand','color'=>'color','size'=>'size','material'=>'material','gtin13'=>'gtin13','mpn'=>'mpn','model'=>'model') as $prop=>$label) {
             foreach ($xp->query('//*[@itemprop="' . $prop . '"]') as $node) self::add_value($attrs, $label, $node->getAttribute('content') ?: $node->textContent);
             if (isset($structured[$prop])) {
