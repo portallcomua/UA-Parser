@@ -80,7 +80,7 @@ final class UAP50_Advanced {
                 $xpath = $this->css_to_xpath($selector);
                 if ($xpath) { $n=$xp->query($xpath)->item(0); if ($n) return trim(preg_replace('/\s+/u',' ',($n instanceof DOMAttr)?$n->value:$n->textContent)); }
             }
-            $n=$xp->query($fallback)->item(0); return $n ? trim(preg_replace('/\s+/u',' ',$n->textContent)) : '';
+            $n=$xp->query($fallback)->item(0); return $n ? trim(preg_replace('/\s+/u',' ',($n instanceof DOMAttr)?$n->value:$n->textContent)) : '';
         };
         $title = $pick(isset($selectors['title'])?$selectors['title']:'', '//h1 | //meta[@property="og:title"]/@content | //title');
         $description = $pick(isset($selectors['description'])?$selectors['description']:'', '//meta[@name="description"]/@content | //article | //main');
