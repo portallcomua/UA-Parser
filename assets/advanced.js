@@ -45,7 +45,7 @@ function runQueue(){
    if(!r.success){log(r.data.message||'Помилка черги.');$('#uap50-crawl').prop('disabled',false);return;}
    var d=r.data, pct=d.done?100:Math.min(95,Math.round(d.scanned/(d.scanned+d.remaining+1)*100));
    $('#uap50-bar').css('width',pct+'%');$('#uap50-percent').text(pct+'%');$('#uap50-status').text('Оброблено сторінок: '+d.scanned+'; у черзі: '+d.remaining);
-   $('#uap50-advanced-results').html('<p>Знайдено матеріалів: '+(d.items||[]).length+'</p>');
+   var cards='<p>Знайдено матеріалів: '+(d.items||[]).length+'</p><div class="uap50-grid">';(d.items||[]).forEach(function(it){cards+='<article class="uap50-item"><label><input type="checkbox" class="uap50-advanced-select" checked value="'+esc(it.id)+'"> <b>'+esc(it.title||'Без назви')+'</b></label><small>'+esc(it.source_url)+'</small>';if(it.images&&it.images.length)cards+='<img src="'+esc(it.images[0])+'" alt="">';cards+='<p>'+esc((it.description||'').replace(/<[^>]*>/g,'').slice(0,180))+'</p></article>';});cards+='</div>';$('#uap50-results').html(cards);$('#uap50-publish,#uap50-export,#uap50-export-profile-btn').prop('disabled',!(d.items||[]).length);
    if(d.done){$('#uap50-status').text('Чергу завершено');$('#uap50-crawl').prop('disabled',false);log('Черга завершена. Сторінок: '+d.scanned+'; нових матеріалів: '+d.added+'; помилок: '+d.errors+'.');}
    else window.setTimeout(step,150);
   }).fail(function(x){$('#uap50-crawl').prop('disabled',false);log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка кроку черги.');});
@@ -54,7 +54,7 @@ function runQueue(){
 $('#uap50-crawl').off('click').on('click',runQueue);
 var oldPublish=$('#uap50-publish').clone();$('#uap50-publish').off('click').on('click',function(){
  if(!window.confirm('Опублікувати зібрані матеріали?'))return;
- req('uap50_publish_advanced',{post_type:$('#uap50-type').val(),post_status:$('#uap50-status').val()}).done(function(r){if(!r.success){log(r.data.message||'Помилка публікації.');return;}log('Публікація: створено '+r.data.count+', дублікатів пропущено '+r.data.duplicates+'.');(r.data.created||[]).forEach(function(x){log('Створено #'+x.id+' '+x.title+'; зображень: '+x.images);});}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка публікації.');});
+ req('uap50_publish_advanced',{post_type:$('#uap50-type').val(),post_status:$('#uap50-status').val(),selected:$('.uap50-advanced-select:checked').map(function(){return this.value;}).get()}).done(function(r){if(!r.success){log(r.data.message||'Помилка публікації.');return;}log('Публікація: створено '+r.data.count+', дублікатів пропущено '+r.data.duplicates+'.');(r.data.created||[]).forEach(function(x){log('Створено #'+x.id+' '+x.title+'; зображень: '+x.images);});}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка публікації.');});
 });
 loadProfiles();
 });
