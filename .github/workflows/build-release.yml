@@ -1,6 +1,8 @@
 name: Build WordPress release ZIP
 on:
   push:
+    branches:
+      - ua-parser-5.0-rebuild
     tags:
       - 'v*'
 permissions:
@@ -10,6 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up PHP syntax check
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Validate PHP and JavaScript
+        run: |
+          find . -path './.git' -prune -o -name '*.php' -type f -print0 | xargs -0 -n1 php -l
+          node --check assets/admin.js
+          node --check assets/advanced.js
       - name: Prepare canonical plugin folder
         run: |
           mkdir -p dist/ua-parser
@@ -17,7 +28,14 @@ jobs:
           cp -R assets includes dist/ua-parser/
       - name: Create installable ZIP
         run: cd dist && zip -r ../ua-parser.zip ua-parser
+      - name: Upload installable ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ua-parser-installable
+          path: ua-parser.zip
+          if-no-files-found: error
       - name: Publish release asset
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: ua-parser.zip
