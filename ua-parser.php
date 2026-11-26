@@ -2,7 +2,7 @@
 /**
  * Plugin Name: UA Parser
  * Description: Візуальний збір вебконтенту, черга сторінок, CMS-профілі та публікація у WordPress/WooCommerce.
- * Version: 5.0.0-beta.7
+ * Version: 5.0.0-beta.8
  * Author: portallcomua
  * Requires at least: 6.0
  * Requires PHP: 7.4
