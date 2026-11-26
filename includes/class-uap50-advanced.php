@@ -316,7 +316,7 @@ private function css_to_xpath($css) {
         $q['queue']=array_values(array_unique(array_slice($q['queue'],0,500)));
         $q['done']=empty($q['queue']) || $q['scanned']>=500;
         set_transient($key,$q,DAY_IN_SECONDS); set_transient(self::ITEMS.$uid,$items,DAY_IN_SECONDS);
-        wp_send_json_success(array('scanned'=>$q['scanned'],'added'=>$q['added'],'remaining'=>count($q['queue']),'done'=>$q['done'],'errors'=>count($q['errors']),'items'=>$items));
+        wp_send_json_success(array('scanned'=>$q['scanned'],'added'=>$q['added'],'remaining'=>count($q['queue']),'done'=>$q['done'],'errors'=>count($q['errors']),'error_messages'=>array_slice($q['errors'],-10),'items'=>$items));
     }
 
     public function profile_save() {
