@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Git tag, e.g. v5.0.0-beta.6'
+        description: 'Git tag, e.g. v5.0.0-beta.7'
         required: false
         default: ''
   pull_request:
