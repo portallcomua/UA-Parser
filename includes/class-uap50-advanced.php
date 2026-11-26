@@ -144,7 +144,7 @@ private function css_to_xpath($css) {
         $html=$this->fetch($url); if (is_wp_error($html)) wp_send_json_error(array('message'=>$html->get_error_message()),400);
         $parsed=$this->dom($html); if (!$parsed) wp_send_json_error(array('message'=>'HTML не розібрано.'),400);
         $xpath=$this->css_to_xpath($selector); if (!$xpath) wp_send_json_error(array('message'=>'Не підтримується цей CSS-селектор. Оберіть простий елемент без псевдокласів.'),400);
-        $nodes=$parsed[1]->query($xpath); $values=array(); foreach ($nodes as $n) { $v=trim(preg_replace('/\s+/u',' ',$n->textContent)); if ($n instanceof DOMElement && $n->tagName==='img') $v=$n->getAttribute('src'); if ($v!=='') $values[]=$v; if (count($values)>=100) break; }
+        $nodes=$parsed[1]->query($xpath); $values=array(); foreach ($nodes as $n) { $v=trim(preg_replace('/\s+/u',' ',$n->textContent)); if ($n instanceof DOMAttr) $v=$n->value; if ($n instanceof DOMElement && $n->tagName==='img') $v=$n->getAttribute('src'); if ($v!=='') $values[]=$v; if (count($values)>=100) break; }
         wp_send_json_success(array('selector'=>$selector,'count'=>count($values),'values'=>$values));
     }
 
@@ -288,7 +288,7 @@ private function css_to_xpath($css) {
             if (file_exists($sdk)) require_once $sdk;
         }
         if (function_exists('fs_dynamic_init')) {
-            fs_dynamic_init(array('id'=>UAP50_FREEMIUS_ID,'slug'=>'ua-parser','type'=>'plugin','public_key'=>UAP50_FREEMIUS_PUBLIC_KEY,'is_premium'=>true,'has_premium_version'=>true));
+            fs_dynamic_init(array('id'=>UAP50_FREEMIUS_ID,'slug'=>'ua-parser','type'=>'plugin','public_key'=>UAP50_FREEMIUS_PUBLIC_KEY,'is_premium'=>false,'has_paid_plans'=>true,'has_premium_version'=>true));
         }
     }
 }
