@@ -3,12 +3,12 @@ Contributors: portallcomua
 Tags: scraper, parser, woocommerce, content-import
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 5.0.0-beta.7
+Stable tag: 5.0.0-beta.8
 License: GPLv2 or later
 
 Універсальний збирач публічних вебсторінок для підготовки даних до WordPress та WooCommerce.
 
-== Поточний стан beta.7 ==
+== Поточний стан beta.8 ==
 * Базове отримання HTML публічних HTTP/HTTPS сторінок.
 * Універсальне витягування даних з HTML незалежно від CMS джерела.
 * Витягування до 50 зображень, включно з lazy-load, Open Graph, JSON-LD та галерейними посиланнями.
