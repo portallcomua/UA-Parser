@@ -39,7 +39,7 @@ $('#uap50-profile-list').on('change',function(){var id=$(this).val();if(!id)retu
 function runQueue(){
  var url=$('#uap50-url').val().trim();if(!url){log('Вкажіть адресу для черги.');return;}
  $('#uap50-crawl').prop('disabled',true);$('#uap50-bar').css('width','1%');$('#uap50-percent').text('0%');$('#uap50-status').text('Запуск черги…');
- req('uap50_queue_start',{url:url}).done(function(r){if(!r.success){log(r.data.message||'Чергу не запущено.');return;}step();}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка запуску черги.');$('#uap50-crawl').prop('disabled',false);});
+ req('uap50_queue_start',{url:url,selectors:JSON.stringify(selectors)}).done(function(r){if(!r.success){log(r.data.message||'Чергу не запущено.');return;}step();}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка запуску черги.');$('#uap50-crawl').prop('disabled',false);});
  function step(){
   req('uap50_queue_step',{batch:2}).done(function(r){
    if(!r.success){log(r.data.message||'Помилка черги.');$('#uap50-crawl').prop('disabled',false);return;}
