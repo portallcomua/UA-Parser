@@ -168,26 +168,30 @@ final class UAP50_Advanced {
             }
             if ($nested) continue;
             $q = new DOMXPath($dom);
-            $customTitle = !empty($selectors['title']) ? $this->css_to_xpath($selectors['title']) : '';
-            $titleNode = $customTitle ? $q->query($customTitle, $card)->item(0) : null;
+            $titleParts = !empty($selectors['title']) ? preg_split('/\s+/', trim($selectors['title'])) : array();
+            $customTitle = $titleParts ? '.' . $this->css_to_xpath(end($titleParts)) : '';
+            $titleNode = $customTitle !== '.' ? $q->query($customTitle, $card)->item(0) : null;
             if (!$titleNode) $titleNode = $q->query('.//*[@itemprop="name"] | .//h1 | .//h2 | .//h3 | .//a[contains(@class,"product")]', $card)->item(0);
             $title = $titleNode ? trim(preg_replace('/\s+/u', ' ', $titleNode->textContent)) : '';
             $linkNode = $q->query('.//a[@href]', $card)->item(0);
             $source = $linkNode ? $this->absolute($linkNode->getAttribute('href'), $url) : '';
             if (!$title && $linkNode) $title = trim(preg_replace('/\s+/u', ' ', $linkNode->textContent));
             if (!$title || !$source || !wp_http_validate_url($source)) continue;
-            $customPrice = !empty($selectors['price']) ? $this->css_to_xpath($selectors['price']) : '';
-            $priceNode = $customPrice ? $q->query($customPrice, $card)->item(0) : null;
+            $priceParts = !empty($selectors['price']) ? preg_split('/\s+/', trim($selectors['price'])) : array();
+            $customPrice = $priceParts ? '.' . $this->css_to_xpath(end($priceParts)) : '';
+            $priceNode = $customPrice !== '.' ? $q->query($customPrice, $card)->item(0) : null;
             if (!$priceNode) $priceNode = $q->query('.//*[@itemprop="price"] | .//*[contains(translate(@class,"PRICE","price"),"price")]', $card)->item(0);
             $price = '';
             if ($priceNode) $price = $priceNode->getAttribute('content') ?: trim($priceNode->textContent);
-            $customDescription = !empty($selectors['description']) ? $this->css_to_xpath($selectors['description']) : '';
-            $descNode = $customDescription ? $q->query($customDescription, $card)->item(0) : null;
+            $descriptionParts = !empty($selectors['description']) ? preg_split('/\s+/', trim($selectors['description'])) : array();
+            $customDescription = $descriptionParts ? '.' . $this->css_to_xpath(end($descriptionParts)) : '';
+            $descNode = $customDescription !== '.' ? $q->query($customDescription, $card)->item(0) : null;
             if (!$descNode) $descNode = $q->query('.//*[@itemprop="description"] | .//p', $card)->item(0);
             $description = $descNode ? trim(preg_replace('/\s+/u', ' ', $descNode->textContent)) : '';
             $images = array();
-            $customImage = !empty($selectors['image']) ? $this->css_to_xpath($selectors['image']) : '';
-            $imageNodes = $customImage ? $q->query($customImage, $card) : $q->query('.//img[@src or @data-src or @data-lazy-src or @data-original]', $card);
+            $imageParts = !empty($selectors['image']) ? preg_split('/\s+/', trim($selectors['image'])) : array();
+            $customImage = $imageParts ? '.' . $this->css_to_xpath(end($imageParts)) : '';
+            $imageNodes = $customImage !== '.' ? $q->query($customImage, $card) : $q->query('.//img[@src or @data-src or @data-lazy-src or @data-original]', $card);
             foreach ($imageNodes as $img) {
                 $raw = $img->getAttribute('data-src') ?: $img->getAttribute('data-lazy-src') ?: $img->getAttribute('data-original') ?: $img->getAttribute('src');
                 if (strpos($raw, ' ') !== false) $raw = strtok($raw, ' ');
