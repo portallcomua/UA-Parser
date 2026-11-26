@@ -1,17 +1,21 @@
-# UA Parser 5.0 — development branch
+# UA Parser 5.0
 
-This branch contains an early alpha foundation for a universal page data collector and WordPress/WooCommerce publisher.
+Universal public-page content collector and importer for WordPress and WooCommerce.
 
-## Current alpha scope
-- Analyze one public HTTP/HTTPS page.
-- Extract title, description, a price candidate and image URLs.
-- Store collected data temporarily per administrator.
-- Export CSV using semicolon delimiter.
-- Publish as a WordPress post, page, or simple WooCommerce product.
-- Avoid duplicates using the source URL metadata.
+This is an actively developed branch, not a claim of full completion. The plugin has a basic page collector, visual preview/selector foundation, AJAX crawl queue, CSV export, simple WordPress/WooCommerce publishing and GitHub release updater.
 
-## Not implemented yet
-Visual click-to-select, repeated-card discovery, crawling categories/pagination/sitemaps, batch queue, saved selector templates, full product gallery/attributes/SKU, CMS export profiles, English localization, Freemius and GitHub updater.
+## Remaining work before the full specification is complete
 
-## Safety and testing
-This is an alpha build. Test on a staging site and publish as drafts first. Respect the source site's terms and content rights. Do not use it to bypass login, CAPTCHA, or access controls.
+- Reliable semantic field selection and repeated product/article card mapping.
+- Editing collected records before export or publishing.
+- Full product image gallery management.
+- Multi-value attributes such as colors and sizes, including real WooCommerce variable products and variations.
+- Robust category/pagination/sitemap crawling and per-item error reporting.
+- Verified export templates for target CMS and marketplaces.
+- Complete Ukrainian/English localization and comprehensive runtime/security testing.
+
+## Project policy
+
+UA Parser contains no payment processing, Freemius integration, license checks, paid plans or paid feature limits.
+
+Use only public pages you are authorized to collect. Test imports on a staging WordPress site and publish as drafts before production use.
