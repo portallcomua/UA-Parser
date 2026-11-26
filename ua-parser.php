@@ -2,7 +2,7 @@
 /**
  * Plugin Name: UA Parser
  * Description: Збір даних з однієї публічної сторінки та базова публікація у WordPress/WooCommerce.
- * Version: 5.0.0-alpha.1
+ * Version: 5.0.0-beta.1
  * Author: portallcomua
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 if (!defined('ABSPATH')) exit;
 
 final class UA_Parser_50 {
-    const VERSION = '5.0.0-alpha.1';
+    const VERSION = '5.0.0-beta.1';
     const NONCE = 'uap50_nonce';
     const STORE = 'uap50_items_';
 
@@ -20,6 +20,7 @@ final class UA_Parser_50 {
         add_action('admin_enqueue_scripts', array($this, 'assets'));
         add_action('wp_ajax_uap50_scan', array($this, 'scan'));
         add_action('wp_ajax_uap50_collect', array($this, 'collect'));
+        add_action('wp_ajax_uap50_crawl', array($this, 'crawl'));
         add_action('wp_ajax_uap50_publish', array($this, 'publish'));
         add_action('admin_post_uap50_export', array($this, 'export'));
     }
@@ -44,14 +45,15 @@ final class UA_Parser_50 {
         if (!current_user_can('manage_options')) return;
         ?>
         <div class="wrap uap50">
-            <h1>UA Parser <small>5.0 alpha.1</small></h1>
+            <h1>UA Parser <small>5.0 beta.1</small></h1>
             <p>Збір даних з публічної сторінки та публікація результатів на цьому WordPress-сайті.</p>
             <section class="uap50-card">
                 <label for="uap50-url"><b>URL сайту або сторінки</b></label>
                 <div class="uap50-row">
                     <input id="uap50-url" type="url" placeholder="https://example.com/product/example">
                     <button class="button" id="uap50-scan">Аналізувати</button>
-                    <button class="button button-primary" id="uap50-collect">Зібрати</button>
+                    <button class="button button-primary" id="uap50-collect">Зібрати сторінку</button>
+                    <button class="button" id="uap50-crawl">Зібрати пов’язані сторінки</button>
                 </div>
                 <p class="description">Alpha.1 обробляє одну сторінку за раз. Перевіряйте права на використання контенту джерела.</p>
             </section>
@@ -78,7 +80,7 @@ final class UA_Parser_50 {
                 </div>
             </section>
             <section class="uap50-card"><h2>Журнал</h2><pre id="uap50-log">UA Parser готовий.</pre></section>
-            <p class="description">Це рання alpha-збірка. Пакетний обхід, візуальний вибір елементів, профілі експорту, галереї/атрибути товарів та updater ще не реалізовані.</p>
+            <p class="description">Beta 1: одиночний збір, обмежений обхід пов’язаних сторінок (до 20), вибір позицій для публікації, CSV та базова публікація.</p>
         </div>
         <?php
     }
@@ -158,6 +160,12 @@ final class UA_Parser_50 {
         }
 
         $images = array();
+        $links = array();
+        foreach ($xp->query('//a[@href]/@href') as $linkNode) {
+            $link = $this->absolute_url($linkNode->nodeValue, $url);
+            if ($link && wp_parse_url($link, PHP_URL_HOST) === wp_parse_url($url, PHP_URL_HOST) && !in_array($link, $links, true)) $links[] = esc_url_raw($link);
+            if (count($links) >= 40) break;
+        }
         foreach ($xp->query('//meta[@property="og:image"]/@content | //img[@src]/@src') as $node) {
             $src = $this->absolute_url($node->nodeValue, $url);
             if ($src && !in_array($src, $images, true)) $images[] = esc_url_raw($src);
@@ -172,7 +180,8 @@ final class UA_Parser_50 {
             'title' => sanitize_text_field($title),
             'description' => wp_kses_post($description),
             'price' => sanitize_text_field($price),
-            'images' => $images
+            'images' => $images,
+            'links' => $links
         );
     }
 
@@ -206,6 +215,35 @@ final class UA_Parser_50 {
         wp_send_json_success(array('items' => $items, 'count' => count($items)));
     }
 
+    public function crawl() {
+        $this->auth();
+        $url = isset($_POST['url']) ? wp_unslash($_POST['url']) : '';
+        $html = $this->get_html($url);
+        if (is_wp_error($html)) wp_send_json_error(array('message' => $html->get_error_message()), 400);
+        $seed = $this->extract($html, $url);
+        if (is_wp_error($seed)) wp_send_json_error(array('message' => $seed->get_error_message()), 400);
+        $items = array($seed);
+        $links = array_slice(isset($seed['links']) ? $seed['links'] : array(), 0, 20);
+        foreach ($links as $link) {
+            if (count($items) >= 21) break;
+            $page = $this->get_html($link);
+            if (is_wp_error($page)) continue;
+            $entry = $this->extract($page, $link);
+            if (!is_wp_error($entry) && !empty($entry['title'])) $items[] = $entry;
+        }
+        $key = self::STORE . get_current_user_id();
+        $existing = get_transient($key);
+        if (!is_array($existing)) $existing = array();
+        $seen = array();
+        foreach ($existing as $old) $seen[$old['source_url']] = true;
+        $added = 0;
+        foreach ($items as $entry) {
+            if (empty($seen[$entry['source_url']])) { $existing[] = $entry; $seen[$entry['source_url']] = true; $added++; }
+        }
+        set_transient($key, $existing, DAY_IN_SECONDS);
+        wp_send_json_success(array('items' => $existing, 'count' => count($existing), 'added' => $added, 'scanned' => count($items)));
+    }
+
     private function results() {
         $items = get_transient(self::STORE . get_current_user_id());
         return is_array($items) ? $items : array();
@@ -231,6 +269,8 @@ final class UA_Parser_50 {
         $this->auth();
         $items = $this->results();
         if (!$items) wp_send_json_error(array('message' => 'Немає зібраних даних.'), 400);
+        $selected = isset($_POST['selected']) ? array_map('sanitize_text_field', (array) wp_unslash($_POST['selected'])) : array();
+        if ($selected) $items = array_values(array_filter($items, function($item) use ($selected) { return in_array($item['id'], $selected, true); }));
         $type = isset($_POST['post_type']) ? sanitize_key($_POST['post_type']) : 'post';
         $status = isset($_POST['post_status']) ? sanitize_key($_POST['post_status']) : 'draft';
         if (!in_array($type, array('post', 'page', 'product'), true)) wp_send_json_error(array('message' => 'Непідтримуваний тип.'), 400);
