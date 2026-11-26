@@ -197,21 +197,38 @@ private function css_to_xpath($css) {
     }
 
     public function export_profile() {
-        $this->auth(); $profile=isset($_POST['profile'])?sanitize_key($_POST['profile']):'csv'; $items=get_transient(self::ITEMS.get_current_user_id());
-        if (!is_array($items)) $items=array();
+        $this->auth();
+        $profile=isset($_POST['profile'])?sanitize_key($_POST['profile']):'csv';
+        $items=get_transient(self::ITEMS.get_current_user_id()); if (!is_array($items)) $items=array();
         $maps=array(
-            'prom'=>array('id','title','description','price','images','source_url'),
-            'rozetka'=>array('id','title','description','price','images','source_url'),
-            'opencart'=>array('id','title','description','price','images','source_url'),
-            'virtuemart'=>array('id','title','description','price','images','source_url'),
-            'joomshopping'=>array('id','title','description','price','images','source_url'),
-            'woocommerce'=>array('id','title','description','price','images','source_url'),
-            'wordpress'=>array('id','title','description','source_url')
+            'prom'=>array('Назва_позиції'=>'title','Опис'=>'description','Ціна'=>'price','Посилання_зображення'=>'images','Код_товару'=>'sku','Посилання_джерела'=>'source_url'),
+            'rozetka'=>array('title_ua'=>'title','description_ua'=>'description','price'=>'price','images'=>'images','article'=>'sku','source_url'=>'source_url'),
+            'opencart'=>array('product_name'=>'title','description'=>'description','price'=>'price','image'=>'images','sku'=>'sku','source_url'=>'source_url'),
+            'virtuemart'=>array('product_sku'=>'sku','product_name'=>'title','product_desc'=>'description','product_price'=>'price','file_url'=>'images','source_url'=>'source_url'),
+            'joomshopping'=>array('product_name'=>'title','description'=>'description','product_price'=>'price','image'=>'images','product_ean'=>'sku','source_url'=>'source_url'),
+            'woocommerce'=>array('Type'=>'type','Name'=>'title','Published'=>'published','Description'=>'description','Regular price'=>'price','Images'=>'images','SKU'=>'sku','Categories'=>'categories'),
+            'wordpress'=>array('post_title'=>'title','post_content'=>'description','post_status'=>'status','post_type'=>'type','featured_image'=>'images','categories'=>'categories','source_url'=>'source_url')
         );
         if (!isset($maps[$profile])) wp_send_json_error(array('message'=>'Невідомий профіль експорту.'),400);
         nocache_headers(); header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename=ua-parser-'.$profile.'.csv');
-        $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF"); fputcsv($out,$maps[$profile],';');
-        foreach ($items as $item) { $row=array(); foreach ($maps[$profile] as $field) { $v=isset($item[$field])?$item[$field]:''; if ($field==='description') $v=wp_strip_all_tags($v); if ($field==='images') $v=implode('|',(array)$v); $row[]=$v; } fputcsv($out,$row,';'); }
+        $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF"); fputcsv($out,array_keys($maps[$profile]),';');
+        foreach ($items as $item) {
+            $row=array();
+            foreach ($maps[$profile] as $field) {
+                $v='';
+                if ($field==='sku') $v=isset($item['attributes']['sku'])?$item['attributes']['sku']:'';
+                elseif ($field==='categories') $v=implode('|',(array)(isset($item['categories'])?$item['categories']:array()));
+                elseif ($field==='images') $v=implode('|',(array)(isset($item['images'])?$item['images']:array()));
+                elseif ($field==='description') $v=wp_strip_all_tags(isset($item['description'])?$item['description']:'');
+                elseif ($field==='type') $v='simple';
+                elseif ($field==='published') $v=0;
+                elseif ($field==='status') $v='draft';
+                elseif ($field==='source_url') $v=isset($item['source_url'])?$item['source_url']:'';
+                elseif (isset($item[$field])) $v=$item[$field];
+                $row[]=$v;
+            }
+            fputcsv($out,$row,';');
+        }
         fclose($out); exit;
     }
 
