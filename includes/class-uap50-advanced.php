@@ -3,7 +3,6 @@ if (!defined('ABSPATH')) exit;
 
 /**
  * Advanced collection layer: visual selector, resumable queue, CMS export profiles.
- * Freemius is bootstrapped only when real credentials are supplied in wp-config.php.
  */
 final class UAP50_Advanced {
     const NONCE = 'uap50_nonce';
@@ -21,12 +20,11 @@ final class UAP50_Advanced {
         add_action('wp_ajax_uap50_export_profile', array($this, 'export_profile'));
         add_action('wp_ajax_uap50_publish_advanced', array($this, 'publish_advanced'));
         add_action('admin_enqueue_scripts', array($this, 'assets'));
-        $this->freemius_bootstrap();
     }
 
     public function assets($hook) {
         if ($hook !== 'toplevel_page_ua-parser') return;
-        wp_enqueue_script('uap50-advanced', plugin_dir_url(dirname(__FILE__)) . 'assets/advanced.js', array('jquery', 'uap50'), '5.0.0-beta.4', true);
+        wp_enqueue_script('uap50-advanced', plugin_dir_url(dirname(__FILE__)) . 'assets/advanced.js', array('jquery', 'uap50'), '5.0.0-beta.6', true);
     }
 
     private function auth() {
@@ -458,15 +456,5 @@ UAP50JS;
         wp_send_json_success(array('created'=>$created,'count'=>count($created),'duplicates'=>$dupes));
     }
 
-    private function freemius_bootstrap() {
-        if (!defined('UAP50_FREEMIUS_ID') || !defined('UAP50_FREEMIUS_PUBLIC_KEY')) return;
-        if (!function_exists('fs_dynamic_init')) {
-            $sdk=plugin_dir_path(dirname(__FILE__)).'freemius/start.php';
-            if (file_exists($sdk)) require_once $sdk;
-        }
-        if (function_exists('fs_dynamic_init')) {
-            fs_dynamic_init(array('id'=>UAP50_FREEMIUS_ID,'slug'=>'ua-parser','type'=>'plugin','public_key'=>UAP50_FREEMIUS_PUBLIC_KEY,'is_premium'=>false,'has_paid_plans'=>true,'has_premium_version'=>true));
-        }
-    }
 }
 new UAP50_Advanced();
