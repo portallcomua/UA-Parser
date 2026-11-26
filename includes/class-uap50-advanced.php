@@ -280,6 +280,9 @@ private function css_to_xpath($css) {
    if(/\b(description|excerpt|summary|short-description|product-description)\b/.test(meta)||e.getAttribute('itemprop')==='description'||tag==='p')return {element:e,field:'description'};
    if(/\bbrand\b/.test(meta)||e.getAttribute('itemprop')==='brand')return {element:e,field:'brand'};
    if(/\bsku|article-number|product-code\b/.test(meta)||e.getAttribute('itemprop')==='sku')return {element:e,field:'sku'};
+   if(/\b(color|colour|колір|цвет|swatch)\b/.test(meta))return {element:e,field:'color'};
+   if(/\b(size|розмір|размер)\b/.test(meta))return {element:e,field:'size'};
+   if(/\b(material|fabric|матеріал|материал)\b/.test(meta))return {element:e,field:'material'};
   }
   return {element:el,field:'description'};
  }
@@ -310,8 +313,43 @@ UAP50JS;
         if (is_wp_error($safe)) wp_send_json_error(array('message'=>$safe->get_error_message()),400);
         $uid=get_current_user_id(); $key=self::QUEUE.$uid;
         $selectors=isset($_POST['selectors'])?json_decode(wp_unslash($_POST['selectors']),true):array(); if (!is_array($selectors)) $selectors=array();
-        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors,'start_url'=>$safe),DAY_IN_SECONDS);
-        wp_send_json_success(array('started'=>true));
+        $seed_queue = array($safe);
+        $parts = wp_parse_url($safe);
+        $origin = (isset($parts['scheme'])?$parts['scheme']:'https').'://'.$parts['host'].(isset($parts['port'])?':'.(int)$parts['port']:'');
+        $sitemaps = array($origin.'/sitemap.xml');
+        $robots = $this->fetch($origin.'/robots.txt');
+        if (!is_wp_error($robots) && preg_match_all('/^\s*Sitemap:\s*(\S+)/im',$robots,$matches)) {
+            foreach ($matches[1] as $map_url) $sitemaps[] = $map_url;
+        }
+        $sitemaps = array_values(array_unique(array_slice($sitemaps,0,5)));
+        $map_seen = array();
+        for ($depth=0; $depth<2 && $sitemaps; $depth++) {
+            $next_maps = array();
+            foreach ($sitemaps as $map_url) {
+                $map_safe = $this->valid_url($map_url);
+                if (is_wp_error($map_safe) || isset($map_seen[$map_safe])) continue;
+                $map_seen[$map_safe] = true;
+                $xml = $this->fetch($map_safe);
+                if (is_wp_error($xml)) continue;
+                $old_errors = libxml_use_internal_errors(true);
+                $map_dom = new DOMDocument();
+                $loaded = $map_dom->loadXML($xml, LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING);
+                libxml_clear_errors(); libxml_use_internal_errors($old_errors);
+                if (!$loaded) continue;
+                $map_xp = new DOMXPath($map_dom);
+                foreach ($map_xp->query('//*[local-name()="loc"]') as $loc) {
+                    $loc_url = trim($loc->textContent);
+                    if (!$loc_url) continue;
+                    if (preg_match('/sitemap/i',$loc_url) && $depth===0) { $next_maps[]=$loc_url; continue; }
+                    $candidate = $this->valid_url($loc_url);
+                    if (is_wp_error($candidate) || strtolower((string)wp_parse_url($candidate,PHP_URL_HOST)) !== strtolower((string)$parts['host'])) continue;
+                    if (!in_array($candidate,$seed_queue,true) && count($seed_queue)<200) $seed_queue[]=$candidate;
+                }
+            }
+            $sitemaps = array_slice(array_values(array_unique($next_maps)),0,5);
+        }
+        set_transient($key,array('queue'=>$seed_queue,'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors,'start_url'=>$safe),DAY_IN_SECONDS);
+        wp_send_json_success(array('started'=>true,'queued'=>count($seed_queue),'sitemaps'=>count($map_seen)));
     }
 
     public function queue_status() {
