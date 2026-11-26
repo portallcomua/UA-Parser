@@ -138,7 +138,8 @@ final class UAP50_Advanced {
         $canonical=$xp->query('//link[@rel="canonical"]/@href')->item(0);
         return array('id'=>wp_generate_uuid4(),'source_url'=>$canonical?$this->absolute($canonical->nodeValue,$url):$url,
             'title'=>sanitize_text_field($title),'description'=>wp_kses_post($description),'price'=>sanitize_text_field($price),
-            'images'=>array_values(array_unique($images)),'attributes'=>$attrs,'categories'=>$categories);
+            'images'=>array_values(array_unique($images)),'attributes'=>$attrs,'categories'=>$categories,
+            'content_type'=>!empty($structured['@type']) ? sanitize_key(is_array($structured['@type']) ? reset($structured['@type']) : $structured['@type']) : 'page');
     }
 
 
@@ -295,7 +296,10 @@ private function css_to_xpath($css) {
                 foreach ($xp->query('//a[@href]') as $a) {
                     $href=$this->absolute($a->getAttribute('href'),$url); if (!$href || strtolower((string)wp_parse_url($href,PHP_URL_HOST))!==$baseHost || isset($q['seen'][$href])) continue;
                     $label=strtolower(trim($a->textContent)); $path=(string)wp_parse_url($href,PHP_URL_PATH); $query=(string)wp_parse_url($href,PHP_URL_QUERY); $parentClass=$a->parentNode instanceof DOMElement ? strtolower($a->parentNode->getAttribute('class')) : '';
-                    if (preg_match('/(page|pagina|страниц|next|наступ|older|›|»|page=|paged=|offset=)/iu',$label.' '.$path.' '.$query.' '.$parentClass) && count($q['seen'])+count($q['queue'])<500) $q['queue'][]=$href;
+                    $inProductCard = preg_match('/(product|item-product|product-card|product-item)/i', $parentClass);
+                    $paginationLink = preg_match('/(page|pagina|страниц|next|наступ|older|›|»|page=|paged=|offset=|pagination)/iu', $label.' '.$path.' '.$query.' '.$parentClass);
+                    $categoryLink = preg_match('/(category|catalog|collection|subcategory|sub-category|product-category|shop-category|категор|каталог|колекц)/iu', $label.' '.$path.' '.$parentClass);
+                    if (($paginationLink || ($categoryLink && !$inProductCard)) && count($q['seen'])+count($q['queue'])<500) $q['queue'][]=$href;
                 }
             }
         }
