@@ -141,6 +141,75 @@ final class UAP50_Advanced {
             'images'=>array_values(array_unique($images)),'attributes'=>$attrs,'categories'=>$categories);
     }
 
+
+    /**
+     * Extract multiple repeated product/article cards from category and listing pages.
+     * Returns an empty array when the page is a detail page or no reliable cards are found.
+     */
+    private function extract_listing_items($html, $url, $selectors = array()) {
+        $parsed = $this->dom($html);
+        if (!$parsed) return array();
+        list($dom, $xp) = $parsed;
+        $cards = $xp->query('//*[@itemtype and contains(@itemtype,"Product")] | //li[contains(concat(" ",normalize-space(@class)," ")," product ")] | //div[contains(concat(" ",normalize-space(@class)," ")," product-card ")] | //div[contains(concat(" ",normalize-space(@class)," ")," product-item ")] | //div[contains(concat(" ",normalize-space(@class)," ")," product-layout ")] | //article');
+        if (!$cards || !$cards->length) return array();
+        $results = array();
+        $seen = array();
+        foreach ($cards as $card) {
+            if (!$card instanceof DOMElement) continue;
+            // Ignore nested matching wrappers when an outer product card already exists.
+            $parent = $card->parentNode;
+            $nested = false;
+            while ($parent instanceof DOMElement) {
+                $cls = ' ' . strtolower($parent->getAttribute('class')) . ' ';
+                if (strpos($cls, ' product ') !== false || strpos($cls, ' product-card ') !== false || strpos($cls, ' product-item ') !== false || strpos($cls, ' product-layout ') !== false) { $nested = true; break; }
+                $parent = $parent->parentNode;
+            }
+            if ($nested) continue;
+            $q = new DOMXPath($dom);
+            $titleNode = $q->query('.//*[@itemprop="name"] | .//h1 | .//h2 | .//h3 | .//a[contains(@class,"product")]', $card)->item(0);
+            $title = $titleNode ? trim(preg_replace('/\s+/u', ' ', $titleNode->textContent)) : '';
+            $linkNode = $q->query('.//a[@href]', $card)->item(0);
+            $source = $linkNode ? $this->absolute($linkNode->getAttribute('href'), $url) : '';
+            if (!$title && $linkNode) $title = trim(preg_replace('/\s+/u', ' ', $linkNode->textContent));
+            if (!$title || !$source || !wp_http_validate_url($source)) continue;
+            $priceNode = $q->query('.//*[@itemprop="price"] | .//*[contains(translate(@class,"PRICE","price"),"price")]', $card)->item(0);
+            $price = '';
+            if ($priceNode) $price = $priceNode->getAttribute('content') ?: trim($priceNode->textContent);
+            $descNode = $q->query('.//*[@itemprop="description"] | .//p', $card)->item(0);
+            $description = $descNode ? trim(preg_replace('/\s+/u', ' ', $descNode->textContent)) : '';
+            $images = array();
+            foreach ($q->query('.//img[@src or @data-src or @data-lazy-src or @data-original]', $card) as $img) {
+                $raw = $img->getAttribute('data-src') ?: $img->getAttribute('data-lazy-src') ?: $img->getAttribute('data-original') ?: $img->getAttribute('src');
+                if (strpos($raw, ' ') !== false) $raw = strtok($raw, ' ');
+                $image = $this->absolute($raw, $url);
+                if ($image && !in_array($image, $images, true)) $images[] = $image;
+                if (count($images) >= 8) break;
+            }
+            $attrs = array();
+            foreach ($q->query('.//*[@itemprop="sku" or @itemprop="brand" or @itemprop="color" or @itemprop="gtin13"]', $card) as $node) {
+                $key = $node->getAttribute('itemprop');
+                $value = trim($node->getAttribute('content') ?: $node->textContent);
+                if ($key && $value) $attrs[$key] = sanitize_text_field($value);
+            }
+            $canonical = untrailingslashit($source);
+            if (isset($seen[$canonical])) continue;
+            $seen[$canonical] = true;
+            $results[] = array(
+                'id' => wp_generate_uuid4(),
+                'source_url' => esc_url_raw($source),
+                'title' => sanitize_text_field($title),
+                'description' => wp_kses_post($description),
+                'price' => sanitize_text_field($price),
+                'images' => $images,
+                'attributes' => $attrs,
+                'categories' => array(),
+                'content_type' => 'product'
+            );
+            if (count($results) >= 100) break;
+        }
+        return $results;
+    }
+
 private function css_to_xpath($css) {
         $css=trim($css); if (!$css || strpos($css,',')!==false || strpos($css,':')!==false) return '';
         $parts=preg_split('/\\s+/', $css); $out=array();
@@ -177,7 +246,7 @@ private function css_to_xpath($css) {
         $html=$this->fetch($url); if (is_wp_error($html)) wp_send_json_error(array('message'=>$html->get_error_message()),400);
         $parsed=$this->dom($html); if (!$parsed) wp_send_json_error(array('message'=>'HTML не розібрано.'),400);
         $xpath=$this->css_to_xpath($selector); if (!$xpath) wp_send_json_error(array('message'=>'Не підтримується цей CSS-селектор. Оберіть простий елемент без псевдокласів.'),400);
-        $nodes=$parsed[1]->query($xpath); $values=array(); foreach ($nodes as $n) { $v=trim(preg_replace('/\s+/u',' ',$n->textContent)); if ($n instanceof DOMAttr) $v=$n->value; if ($n instanceof DOMElement && $n->tagName==='img') $v=$n->getAttribute('src'); if ($v!=='') $values[]=$v; if (count($values)>=100) break; }
+        $nodes=$parsed[1]->query($xpath); $values=array(); foreach ($nodes as $n) { $v=trim(preg_replace('/\s+/u',' ',$n->textContent)); if ($n instanceof DOMAttr) $v=$n->value; if ($n instanceof DOMElement && $n->tagName==='img') $v=$n->getAttribute('data-src') ?: $n->getAttribute('data-lazy-src') ?: $n->getAttribute('data-original') ?: $n->getAttribute('src'); if ($v!=='') $values[]=$v; if (count($values)>=100) break; }
         wp_send_json_success(array('selector'=>$selector,'count'=>count($values),'values'=>$values));
     }
 
@@ -204,9 +273,21 @@ private function css_to_xpath($css) {
             $url=array_shift($q['queue']); if (isset($q['seen'][$url])) continue; $q['seen'][$url]=1;
             $html=$this->fetch($url); $q['scanned']++;
             if (is_wp_error($html)) { $q['errors'][]=$url.' — '.$html->get_error_message(); continue; }
-            $item=$this->extract_item($html,$url,isset($q['selectors'])?$q['selectors']:array()); if (is_wp_error($item)) { $q['errors'][]=$url.' — помилка HTML'; continue; }
-            $exists=false; foreach ($items as $old) if (!empty($old['source_url']) && $old['source_url']===$item['source_url']) {$exists=true;break;}
-            if (!$exists && !empty($item['title'])) {$items[]=$item;$q['added']++;}
+            $pageSelectors = isset($q['selectors']) ? $q['selectors'] : array();
+            $listingItems = $this->extract_listing_items($html, $url, $pageSelectors);
+            if ($listingItems) {
+                foreach ($listingItems as $item) {
+                    $exists = false;
+                    foreach ($items as $old) if (!empty($old['source_url']) && untrailingslashit($old['source_url']) === untrailingslashit($item['source_url'])) { $exists = true; break; }
+                    if (!$exists) { $items[] = $item; $q['added']++; }
+                }
+            } else {
+                $item = $this->extract_item($html, $url, $pageSelectors);
+                if (is_wp_error($item)) { $q['errors'][] = $url . ' — помилка HTML'; continue; }
+                $exists = false;
+                foreach ($items as $old) if (!empty($old['source_url']) && untrailingslashit($old['source_url']) === untrailingslashit($item['source_url'])) { $exists = true; break; }
+                if (!$exists && !empty($item['title'])) { $items[] = $item; $q['added']++; }
+            }
             $parsed=$this->dom($html); if ($parsed) {
                 $xp=$parsed[1]; $baseHost=strtolower((string)wp_parse_url($url,PHP_URL_HOST));
                 $next=$xp->query('//link[contains(concat(" ",normalize-space(@rel)," ")," next ")]/@href')->item(0);
