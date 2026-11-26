@@ -351,4 +351,5 @@ final class UA_Parser_50 {
         exit;
     }
 }
-new UA_Parser_50();\nrequire_once __DIR__ . '/includes/class-uap50-advanced.php';
+new UA_Parser_50();
+require_once __DIR__ . '/includes/class-uap50-advanced.php';
