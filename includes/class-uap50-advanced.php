@@ -13,7 +13,8 @@ final class UAP50_Advanced {
     public function __construct() {
         add_action('wp_ajax_uap50_preview', array($this, 'preview'));
         add_action('wp_ajax_uap50_selector_extract', array($this, 'selector_extract'));
-        add_action('wp_ajax_uap50_queue_start', array($this, 'queue_start'));\n        add_action('wp_ajax_uap50_queue_status', array($this, 'queue_status'));
+        add_action('wp_ajax_uap50_queue_start', array($this, 'queue_start'));
+        add_action('wp_ajax_uap50_queue_status', array($this, 'queue_status'));
         add_action('wp_ajax_uap50_queue_step', array($this, 'queue_step'));
         add_action('wp_ajax_uap50_profile_save', array($this, 'profile_save'));
         add_action('wp_ajax_uap50_profile_list', array($this, 'profile_list'));
