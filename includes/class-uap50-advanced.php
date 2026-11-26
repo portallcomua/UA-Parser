@@ -17,6 +17,7 @@ final class UAP50_Advanced {
         add_action('wp_ajax_uap50_queue_step', array($this, 'queue_step'));
         add_action('wp_ajax_uap50_profile_save', array($this, 'profile_save'));
         add_action('wp_ajax_uap50_profile_list', array($this, 'profile_list'));
+        add_action('wp_ajax_uap50_items_update', array($this, 'items_update'));
         add_action('wp_ajax_uap50_export_profile', array($this, 'export_profile'));
         add_action('wp_ajax_uap50_publish_advanced', array($this, 'publish_advanced'));
         add_action('admin_enqueue_scripts', array($this, 'assets'));
@@ -372,6 +373,46 @@ UAP50JS;
 
     public function profile_list() {
         $this->auth(); $profiles=get_option('uap50_profiles',array()); wp_send_json_success(array('profiles'=>is_array($profiles)?$profiles:array()));
+    }
+
+    public function items_update() {
+        $this->auth();
+        $raw = isset($_POST['items']) ? wp_unslash($_POST['items']) : '';
+        $incoming = json_decode($raw, true);
+        if (!is_array($incoming) || count($incoming) > 1000) wp_send_json_error(array('message'=>'Некоректний набір даних.'),400);
+        $current = get_transient(self::ITEMS . get_current_user_id());
+        if (!is_array($current)) $current = array();
+        $by_id = array();
+        foreach ($incoming as $row) {
+            if (!is_array($row) || empty($row['id'])) continue;
+            $id = sanitize_text_field($row['id']);
+            $images = array();
+            foreach (array_slice((array)(isset($row['images'])?$row['images']:array()),0,50) as $image) {
+                $image = $this->valid_url($image);
+                if (!is_wp_error($image) && !in_array($image,$images,true)) $images[] = esc_url_raw($image);
+            }
+            $attributes = array();
+            foreach ((array)(isset($row['attributes'])?$row['attributes']:array()) as $name=>$values) {
+                $name = sanitize_text_field($name);
+                if ($name === '') continue;
+                $attributes[$name] = array_values(array_unique(array_filter(array_map('sanitize_text_field',(array)$values))));
+            }
+            $row['title'] = sanitize_text_field(isset($row['title'])?$row['title']:'');
+            $row['description'] = wp_kses_post(isset($row['description'])?$row['description']:'');
+            $row['price'] = sanitize_text_field(isset($row['price'])?$row['price']:'');
+            $row['images'] = $images;
+            $row['attributes'] = $attributes;
+            $by_id[$id] = $row;
+        }
+        $saved = 0;
+        foreach ($current as $index=>$old) {
+            if (!empty($old['id']) && isset($by_id[$old['id']])) {
+                $current[$index] = array_merge($old,$by_id[$old['id']]);
+                $saved++;
+            }
+        }
+        set_transient(self::ITEMS . get_current_user_id(),$current,DAY_IN_SECONDS);
+        wp_send_json_success(array('saved'=>$saved,'items'=>$current));
     }
 
     public function export_profile() {
