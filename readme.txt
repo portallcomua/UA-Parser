@@ -3,7 +3,7 @@ Contributors: portallcomua
 Tags: scraper, parser, woocommerce, content-import
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 5.0.0-beta.3
+Stable tag: 5.0.0-beta.4
 License: GPLv2 or later
 
 Універсальний збір контенту з публічних сторінок із візуальним вибором полів, пакетним обходом сторінок та перенесенням даних у WordPress/WooCommerce.
