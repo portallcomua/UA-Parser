@@ -66,7 +66,7 @@ final class UA_Parser_50 {
                 <h2>Зібрані дані</h2>
                 <div id="uap50-results"><p>Поки немає результатів.</p></div>
                 <div class="uap50-row uap50-actions">
-                    <button class="button" id="uap50-export" disabled>Експорт CSV</button>
+                    <button class="button" id="uap50-export" disabled>Експорт CSV</button><select id="uap50-export-profile"><option value="prom">Prom</option><option value="rozetka">Rozetka</option><option value="opencart">OpenCart</option><option value="virtuemart">VirtueMart</option><option value="joomshopping">JoomShopping</option><option value="woocommerce">WooCommerce</option><option value="wordpress">WordPress</option></select><button class="button" id="uap50-export-profile-btn">Експорт за профілем</button>
                     <select id="uap50-type">
                         <option value="post">Записи WordPress</option>
                         <option value="page">Сторінки WordPress</option>
