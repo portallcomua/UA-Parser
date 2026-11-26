@@ -2,7 +2,7 @@
 /**
  * Plugin Name: UA Parser
  * Description: Візуальний збір вебконтенту, черга сторінок, CMS-профілі та публікація у WordPress/WooCommerce.
- * Version: 5.0.0-beta.6
+ * Version: 5.0.0-beta.7
  * Author: portallcomua
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -202,7 +202,7 @@ final class UA_Parser_50 {
         $url = isset($_POST['url']) ? wp_unslash($_POST['url']) : '';
         $html = $this->get_html($url);
         if (is_wp_error($html)) wp_send_json_error(array('message' => $html->get_error_message()), 400);
-        $item = $this->extract($html, $url);
+        $item = UAP50_Data::extract($html, $url);
         if (is_wp_error($item)) wp_send_json_error(array('message' => $item->get_error_message()), 400);
         wp_send_json_success(array('fields' => array(
             array('label' => 'Заголовок', 'value' => $item['title']),
@@ -423,4 +423,5 @@ final class UAP50_GitHub_Updater {
 }
 new UAP50_GitHub_Updater();
 
+require_once __DIR__ . '/includes/class-uap50-data.php';
 require_once __DIR__ . '/includes/class-uap50-advanced.php';
