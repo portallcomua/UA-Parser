@@ -415,7 +415,7 @@ UAP50JS;
     public function publish_advanced() {
         $this->auth();
         $items=get_transient(self::ITEMS.get_current_user_id()); if (!is_array($items)) $items=array();
-        $selected=isset($_POST['selected'])?array_map('sanitize_text_field',(array)wp_unslash($_POST['selected'])):array(); if ($selected) $items=array_values(array_filter($items,function($it)use($selected){return in_array($it['id'],$selected,true);}));
+        $selected=isset($_POST['selected'])?array_map('sanitize_text_field',(array)wp_unslash($_POST['selected'])):array(); if (isset($_POST['selected']) && !$selected) wp_send_json_error(array('message'=>'Оберіть хоча б один матеріал для публікації.'),400); if ($selected) $items=array_values(array_filter($items,function($it)use($selected){return in_array($it['id'],$selected,true);}));
         $type=isset($_POST['post_type'])?sanitize_key($_POST['post_type']):'product'; $status=isset($_POST['post_status'])?sanitize_key($_POST['post_status']):'draft';
         if (!in_array($type,array('product','post','page'),true)) wp_send_json_error(array('message'=>'Непідтримуваний тип.'),400); if ($type==='product' && !class_exists('WooCommerce')) wp_send_json_error(array('message'=>'Для публікації товарів потрібен WooCommerce.'),400);
         if (!in_array($status,array('draft','publish'),true)) $status='draft';
