@@ -146,7 +146,7 @@ final class UAP50_Advanced {
         $this->auth(); $url=isset($_POST['url'])?wp_unslash($_POST['url']):''; $safe=$this->valid_url($url);
         if (is_wp_error($safe)) wp_send_json_error(array('message'=>$safe->get_error_message()),400);
         $uid=get_current_user_id(); $key=self::QUEUE.$uid;
-        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false),DAY_IN_SECONDS);
+        $selectors=isset($_POST['selectors'])?json_decode(wp_unslash($_POST['selectors']),true):array(); if (!is_array($selectors)) $selectors=array();\n        set_transient($key,array('queue'=>array($safe),'seen'=>array(),'scanned'=>0,'added'=>0,'errors'=>array(),'done'=>false,'selectors'=>$selectors),DAY_IN_SECONDS);
         wp_send_json_success(array('started'=>true));
     }
 
@@ -158,7 +158,7 @@ final class UAP50_Advanced {
             $url=array_shift($q['queue']); if (isset($q['seen'][$url])) continue; $q['seen'][$url]=1;
             $html=$this->fetch($url); $q['scanned']++;
             if (is_wp_error($html)) { $q['errors'][]=$url.' — '.$html->get_error_message(); continue; }
-            $item=$this->extract_item($html,$url); if (is_wp_error($item)) { $q['errors'][]=$url.' — помилка HTML'; continue; }
+            $item=$this->extract_item($html,$url,isset($q['selectors'])?$q['selectors']:array()); if (is_wp_error($item)) { $q['errors'][]=$url.' — помилка HTML'; continue; }
             $exists=false; foreach ($items as $old) if (!empty($old['source_url']) && $old['source_url']===$item['source_url']) {$exists=true;break;}
             if (!$exists && !empty($item['title'])) {$items[]=$item;$q['added']++;}
             $parsed=$this->dom($html); if ($parsed) {
@@ -226,7 +226,15 @@ final class UAP50_Advanced {
                 $raw=preg_replace('/[^0-9,.]/u','',isset($item['price'])?$item['price']:''); if (substr_count($raw,',')===1 && strpos($raw,'.')===false) $raw=str_replace(',','.',$raw); else $raw=str_replace(',','',$raw);
                 if ($raw!=='' && is_numeric($raw)) $p->set_regular_price(wc_format_decimal($raw));
                 $p->update_meta_data('_uap50_source_url',$source);
-                if (!empty($item['attributes']) && is_array($item['attributes'])) foreach ($item['attributes'] as $k=>$v) $p->update_meta_data('uap50_'.sanitize_key($k),sanitize_text_field($v));
+                if (!empty($item['attributes']) && is_array($item['attributes'])) {
+                    $wcattrs=array(); $pos=0;
+                    foreach ($item['attributes'] as $k=>$v) {
+                        $k=sanitize_text_field($k); $v=sanitize_text_field($v); $p->update_meta_data('uap50_'.sanitize_key($k),$v);
+                        if (class_exists('WC_Product_Attribute')) { $a=new WC_Product_Attribute(); $a->set_id(0); $a->set_name($k); $a->set_options(array($v)); $a->set_position($pos++); $a->set_visible(true); $a->set_variation(false); $wcattrs[]=$a; }
+                    }
+                    if ($wcattrs) $p->set_attributes($wcattrs);
+                    if (!empty($item['attributes']['sku']) && !wc_get_product_id_by_sku($item['attributes']['sku'])) $p->set_sku(sanitize_text_field($item['attributes']['sku']));
+                }
                 $id=$p->save();
             } else $id=wp_insert_post(array('post_type'=>$type,'post_status'=>$status,'post_title'=>$title,'post_content'=>$desc,'meta_input'=>array('_uap50_source_url'=>$source)),true);
             if (is_wp_error($id) || !$id) continue;
