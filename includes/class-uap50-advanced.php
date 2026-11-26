@@ -97,10 +97,14 @@ final class UAP50_Advanced {
             $key = $n->getAttribute('itemprop'); $val = trim($n->getAttribute('content') ?: $n->textContent);
             if ($key && $val) $attrs[$key] = sanitize_text_field($val);
         }
+        foreach (array('brand','sku','color','attribute') as $field) {
+            if (!empty($selectors[$field])) { $sx=$this->css_to_xpath($selectors[$field]); if ($sx) { $sn=$xp->query($sx)->item(0); if ($sn) { $sv=($sn instanceof DOMAttr)?$sn->value:(($sn instanceof DOMElement && $sn->tagName==='img')?$sn->getAttribute('alt'):$sn->textContent); if (trim($sv)!=='') $attrs[$field]=sanitize_text_field(trim($sv)); } } }
+        }
+        $categories=array(); foreach ($xp->query('//*[@itemprop="category"] | //*[@itemprop="name" and ancestor::*[@itemtype="*BreadcrumbList"]]') as $cn) { $cv=trim($cn->textContent); if ($cv && !in_array($cv,$categories,true)) $categories[]=sanitize_text_field($cv); if (count($categories)>=8) break; }
         $canonical=$xp->query('//link[@rel="canonical"]/@href')->item(0);
         return array('id'=>wp_generate_uuid4(),'source_url'=>$canonical?$this->absolute($canonical->nodeValue,$url):$url,
             'title'=>sanitize_text_field($title),'description'=>wp_kses_post($description),'price'=>sanitize_text_field($price),
-            'images'=>array_values(array_unique($images)),'attributes'=>$attrs);
+            'images'=>array_values(array_unique($images)),'attributes'=>$attrs,'categories'=>$categories);
     }
 
 private function css_to_xpath($css) {
@@ -227,7 +231,7 @@ private function css_to_xpath($css) {
                 $raw=preg_replace('/[^0-9,.]/u','',isset($item['price'])?$item['price']:''); if (substr_count($raw,',')===1 && strpos($raw,'.')===false) $raw=str_replace(',','.',$raw); else $raw=str_replace(',','',$raw);
                 if ($raw!=='' && is_numeric($raw)) $p->set_regular_price(wc_format_decimal($raw));
                 $p->update_meta_data('_uap50_source_url',$source);
-                if (!empty($item['attributes']) && is_array($item['attributes'])) {
+                if (!empty($item['categories']) && is_array($item['categories'])) { $cat_ids=array(); foreach ($item['categories'] as $cat_name) { $term=term_exists($cat_name,'product_cat'); if (!$term) $term=wp_insert_term($cat_name,'product_cat'); if (!is_wp_error($term)) $cat_ids[]=(int)(is_array($term)?$term['term_id']:$term); } if ($cat_ids) $p->set_category_ids(array_values(array_unique($cat_ids))); }\n                if (!empty($item['attributes']) && is_array($item['attributes'])) {
                     $wcattrs=array(); $pos=0;
                     foreach ($item['attributes'] as $k=>$v) {
                         $k=sanitize_text_field($k); $v=sanitize_text_field($v); $p->update_meta_data('uap50_'.sanitize_key($k),$v);
