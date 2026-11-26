@@ -1,5 +1,6 @@
 name: Build WordPress release ZIP
 on:
+  workflow_dispatch:
   push:
     branches:
       - ua-parser-5.0-rebuild
