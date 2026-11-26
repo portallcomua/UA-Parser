@@ -36,10 +36,10 @@ $('#uap50-save-profile').on('click',function(){
 });
 function loadProfiles(){req('uap50_profile_list').done(function(r){if(!r.success)return;var s=$('#uap50-profile-list').empty().append('<option value="">Виберіть профіль</option>');$.each(r.data.profiles||{},function(id,p){s.append($('<option>').val(id).text(p.name));});});}
 $('#uap50-profile-list').on('change',function(){var id=$(this).val();if(!id)return;req('uap50_profile_list').done(function(r){var p=r.data.profiles[id];if(!p)return;selectors=p.data.selectors||{};if(p.data.url)$('#uap50-url').val(p.data.url);sourceUrl=p.data.url||sourceUrl;$('#uap50-selector-fields').html('<p>Завантажено селекторів: '+Object.keys(selectors).length+'. Натисніть «Завантажити попередній перегляд» для перевірки.</p>');});});
-function runQueue(){
+function runQueue(resume){
  var url=$('#uap50-url').val().trim();if(!url){log('Вкажіть адресу для черги.');return;}
  $('#uap50-crawl').prop('disabled',true);$('#uap50-bar').css('width','1%');$('#uap50-percent').text('0%');$('#uap50-status').text('Запуск черги…');
- req('uap50_queue_start',{url:url,selectors:JSON.stringify(selectors)}).done(function(r){if(!r.success){log(r.data.message||'Чергу не запущено.');return;}step();}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка запуску черги.');$('#uap50-crawl').prop('disabled',false);});
+ if(resume){step();}else{req('uap50_queue_start',{url:url,selectors:JSON.stringify(selectors)}).done(function(r){if(!r.success){log(r.data.message||'Чергу не запущено.');return;}step();}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка запуску черги.');$('#uap50-crawl').prop('disabled',false);});}
  function step(){
   req('uap50_queue_step',{batch:2}).done(function(r){
    if(!r.success){log(r.data.message||'Помилка черги.');$('#uap50-crawl').prop('disabled',false);return;}
@@ -51,7 +51,7 @@ function runQueue(){
   }).fail(function(x){$('#uap50-crawl').prop('disabled',false);log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка кроку черги.');});
  }
 }
-$('#uap50-crawl').off('click').on('click',runQueue);
+$('#uap50-crawl').off('click').on('click',function(){runQueue(false);});\n$('#uap50-resume-queue').on('click',function(){runQueue(true);});\nreq('uap50_queue_status').done(function(r){if(r.success&&r.data.active){$('#uap50-resume-queue').show();$('#uap50-status').text('Збережена черга: сторінок оброблено '+r.data.scanned+', залишилось '+r.data.remaining);}});
 var oldPublish=$('#uap50-publish').clone();$('#uap50-publish').off('click').on('click',function(){
  if(!window.confirm('Опублікувати зібрані матеріали?'))return;
  req('uap50_publish_advanced',{post_type:$('#uap50-type').val(),post_status:$('#uap50-status').val(),selected:$('.uap50-advanced-select:checked').map(function(){return this.value;}).get()}).done(function(r){if(!r.success){log(r.data.message||'Помилка публікації.');return;}log('Публікація: створено '+r.data.count+', дублікатів пропущено '+r.data.duplicates+'.');(r.data.created||[]).forEach(function(x){log('Створено #'+x.id+' '+x.title+'; зображень: '+x.images);});}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка публікації.');});
