@@ -215,10 +215,10 @@ private function css_to_xpath($css) {
     }
 
     public function publish_advanced() {
-        $this->auth(); if (!class_exists('WooCommerce')) wp_send_json_error(array('message'=>'Для розширеної публікації товарів потрібен WooCommerce.'),400);
+        $this->auth();
         $items=get_transient(self::ITEMS.get_current_user_id()); if (!is_array($items)) $items=array();
         $type=isset($_POST['post_type'])?sanitize_key($_POST['post_type']):'product'; $status=isset($_POST['post_status'])?sanitize_key($_POST['post_status']):'draft';
-        if (!in_array($type,array('product','post','page'),true)) wp_send_json_error(array('message'=>'Непідтримуваний тип.'),400);
+        if (!in_array($type,array('product','post','page'),true)) wp_send_json_error(array('message'=>'Непідтримуваний тип.'),400); if ($type==='product' && !class_exists('WooCommerce')) wp_send_json_error(array('message'=>'Для публікації товарів потрібен WooCommerce.'),400);
         if (!in_array($status,array('draft','publish'),true)) $status='draft';
         $created=array(); $dupes=0;
         foreach ($items as $item) {
