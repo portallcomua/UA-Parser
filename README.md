@@ -14,7 +14,7 @@ This is an actively developed branch, not a claim of full completion. The plugin
 - Verified export templates for target CMS and marketplaces.
 - Complete Ukrainian/English localization and comprehensive runtime/security testing.
 
-## Beta.7 extraction scope
+## Beta.8 extraction scope
 
 The universal extractor reads HTML and structured data (JSON-LD, Open Graph, microdata), lazy-loaded images, gallery links, native option controls and common swatch attributes. It preserves multiple attribute values and ProductGroup variants when the source exposes them. Destination publishing is handled separately; the source CMS is not assumed to be WordPress.
 
