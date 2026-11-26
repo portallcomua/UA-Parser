@@ -1,6 +1,6 @@
 jQuery(function($){
 'use strict';
-var selectors={}, frame=$('#uap50-preview-frame'), sourceUrl='';
+var selectors={}, currentItems=[], frame=$('#uap50-preview-frame'), sourceUrl='';
 function log(s){var b=$('#uap50-log');b.text('['+new Date().toLocaleTimeString()+'] '+s+'\n'+b.text());}
 function req(action,data){data=data||{};data.action=action;data.nonce=UAP50.nonce;return $.post(UAP50.ajax,data);}
 function esc(v){return $('<div>').text(v==null?'':String(v)).html();}
@@ -45,13 +45,26 @@ function runQueue(resume){
   req('uap50_queue_step',{batch:2}).done(function(r){
    if(!r.success){log(r.data.message||'Помилка черги.');$('#uap50-crawl').prop('disabled',false);return;}
    var d=r.data, pct=d.done?100:Math.min(95,Math.round(d.scanned/(d.scanned+d.remaining+1)*100));
-   $('#uap50-bar').css('width',pct+'%');$('#uap50-percent').text(pct+'%');$('#uap50-status').text('Оброблено сторінок: '+d.scanned+'; у черзі: '+d.remaining);
-   var cards='<p>Знайдено матеріалів: '+(d.items||[]).length+'</p><div class="uap50-grid">';(d.items||[]).forEach(function(it){cards+='<article class="uap50-item"><label><input type="checkbox" class="uap50-advanced-select" checked value="'+esc(it.id)+'"> <b>'+esc(it.title||'Без назви')+'</b></label><small>'+esc(it.source_url)+'</small>';if(it.images&&it.images.length){cards+='<div class="uap50-gallery">';it.images.forEach(function(im){cards+='<img src="'+esc(im)+'" alt="" loading="lazy">';});cards+='</div><small>Фото в галереї: '+it.images.length+'</small>';}if(it.attributes){cards+='<dl class="uap50-attributes">';Object.keys(it.attributes).forEach(function(k){var vals=Array.isArray(it.attributes[k])?it.attributes[k]:[it.attributes[k]];cards+='<dt>'+esc(k)+'</dt><dd>'+esc(vals.join(' / '))+'</dd>';});cards+='</dl>';}if(it.variations&&it.variations.length)cards+='<small>Варіантів товару: '+it.variations.length+'</small>';cards+='<p>'+esc((it.description||'').replace(/<[^>]*>/g,'').slice(0,180))+'</p></article>';});cards+='</div>';$('#uap50-results').html(cards);$('#uap50-publish,#uap50-export,#uap50-export-profile-btn').prop('disabled',!(d.items||[]).length);
+   currentItems=d.items||[];window.UAP50Collected=currentItems;$('#uap50-bar').css('width',pct+'%');$('#uap50-percent').text(pct+'%');$('#uap50-status').text('Оброблено сторінок: '+d.scanned+'; у черзі: '+d.remaining);
+   var cards='<p>Знайдено матеріалів: '+(d.items||[]).length+'</p><div class="uap50-grid">';(d.items||[]).forEach(function(it){cards+='<article class="uap50-item" data-item-id="'+esc(it.id)+'"><label><input type="checkbox" class="uap50-advanced-select" checked value="'+esc(it.id)+'"> <b>'+esc(it.title||'Без назви')+'</b></label><small>'+esc(it.source_url)+'</small>';if(it.images&&it.images.length){cards+='<div class="uap50-gallery">';it.images.forEach(function(im){cards+='<img src="'+esc(im)+'" alt="" loading="lazy">';});cards+='</div><small>Фото в галереї: '+it.images.length+'</small>';}if(it.attributes){cards+='<dl class="uap50-attributes">';Object.keys(it.attributes).forEach(function(k){var vals=Array.isArray(it.attributes[k])?it.attributes[k]:[it.attributes[k]];cards+='<dt>'+esc(k)+'</dt><dd>'+esc(vals.join(' / '))+'</dd>';});cards+='</dl>';}if(it.variations&&it.variations.length)cards+='<small>Варіантів товару: '+it.variations.length+'</small>';cards+='<details class="uap50-editor"><summary>Редагувати матеріал і галерею</summary><label>Назва<input class="uap50-edit-title" value="'+esc(it.title||'')+'"></label><label>Опис<textarea class="uap50-edit-description">'+esc(it.description||'')+'</textarea></label><label>Ціна<input class="uap50-edit-price" value="'+esc(it.price||'')+'"></label><label>Фото галереї — одне URL на рядок<textarea class="uap50-edit-images">'+esc((it.images||[]).join('\n'))+'</textarea></label><label>Атрибути — JSON<textarea class="uap50-edit-attributes">'+esc(JSON.stringify(it.attributes||{},null,2))+'</textarea></label><label>Варіації — JSON<textarea class="uap50-edit-variations">'+esc(JSON.stringify(it.variations||[],null,2))+'</textarea></label><button type="button" class="button uap50-save-item">Зберегти зміни</button></details><p>'+esc((it.description||'').replace(/<[^>]*>/g,'').slice(0,180))+'</p></article>';});cards+='</div>';$('#uap50-results').html(cards);$('#uap50-publish,#uap50-export,#uap50-export-profile-btn').prop('disabled',!(d.items||[]).length);
    if(d.done){$('#uap50-status').text('Чергу завершено');$('#uap50-crawl').prop('disabled',false);log('Черга завершена. Сторінок: '+d.scanned+'; нових матеріалів: '+d.added+'; помилок: '+d.errors+'.');(d.error_messages||[]).forEach(function(e){log('Помилка: '+e);});}
    else window.setTimeout(step,150);
   }).fail(function(x){$('#uap50-crawl').prop('disabled',false);log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка кроку черги.');});
  }
 }
+$('#uap50-results').on('click','.uap50-save-item',function(){
+ var card=$(this).closest('.uap50-item'),id=String(card.data('item-id')||card.find('input[type=checkbox]').val()),items=window.UAP50Collected||currentItems;
+ var item=items.find(function(x){return String(x.id)===id;});if(!item){log('Не знайдено запис для збереження.');return;}
+ try{
+ item.title=card.find('.uap50-edit-title').val();
+ item.description=card.find('.uap50-edit-description').val();
+ item.price=card.find('.uap50-edit-price').val();
+ item.images=card.find('.uap50-edit-images').val().split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
+ item.attributes=JSON.parse(card.find('.uap50-edit-attributes').val()||'{}');
+ item.variations=JSON.parse(card.find('.uap50-edit-variations').val()||'[]');
+ }catch(e){log('Перевірте JSON атрибутів і варіацій: '+e.message);return;}
+ req('uap50_items_update',{items:JSON.stringify(items)}).done(function(r){if(r.success){window.UAP50Collected=r.data.items;currentItems=r.data.items;log('Зміни збережено. Фото: '+item.images.length+', груп атрибутів: '+Object.keys(item.attributes).length);}else log(r.data.message||'Не вдалося зберегти зміни.');}).fail(function(x){log(x.responseJSON&&x.responseJSON.data?x.responseJSON.data.message:'Помилка збереження.');});
+});
 $('#uap50-crawl').off('click').on('click',function(){runQueue(false);});
 $('#uap50-resume-queue').on('click',function(){runQueue(true);});
 req('uap50_queue_status').done(function(r){if(r.success&&r.data.active){$('#uap50-resume-queue').show();if(r.data.url)$('#uap50-url').val(r.data.url);$('#uap50-status').text('Збережена черга: сторінок оброблено '+r.data.scanned+', залишилось '+r.data.remaining);}});
