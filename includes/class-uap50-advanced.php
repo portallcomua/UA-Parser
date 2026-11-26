@@ -129,7 +129,7 @@ final class UAP50_Advanced {
         $base=$dom->createElement('base'); $base->setAttribute('href',esc_url($url));
         $head=$dom->getElementsByTagName('head')->item(0); if ($head) $head->insertBefore($base,$head->firstChild);
         $js = '<script>(function(){function path(e){var a=[];while(e&&e.nodeType===1&&e!==document.body){var s=e.tagName.toLowerCase();if(e.id){s+="#"+e.id;a.unshift(s);break;}if(e.className&&typeof e.className==="string")s+="."+e.className.trim().split(/\\s+/).slice(0,2).join(".");var p=e.parentNode;if(p){var same=[].filter.call(p.children,function(x){return x.tagName===e.tagName;});if(same.length>1)s+=":nth-of-type("+(same.indexOf(e)+1)+")";}a.unshift(s);e=p;}return a.join(" > ");}document.addEventListener("click",function(ev){var e=ev.target.closest("h1,h2,h3,p,span,div,img,a,li,button");if(!e)return;ev.preventDefault();ev.stopPropagation();parent.postMessage({uap50Selector:{selector:path(e),text:(e.innerText||e.alt||e.getAttribute("content")||"").trim().slice(0,500),tag:e.tagName.toLowerCase(),image:e.tagName==="IMG"?e.src:""}},"*");},true);})();<\/script>';
-        $body=$dom->getElementsByTagName('body')->item(0); if ($body) { $frag=$dom->createDocumentFragment(); $frag->appendXML($js); $body->appendChild($frag); }
+        $body=$dom->getElementsByTagName('body')->item(0); if ($body) { $script=$dom->createElement('script'); $script->appendChild($dom->createTextNode(str_replace('<\\/script>','</script>',$js))); $body->appendChild($script); }
         wp_send_json_success(array('html'=>$dom->saveHTML(),'url'=>esc_url_raw($url)));
     }
 
@@ -191,7 +191,7 @@ final class UAP50_Advanced {
     }
 
     public function export_profile() {
-        $this->auth(); $profile=isset($_POST['profile'])?sanitize_key($_POST['profile']):'csv'; $items=get_option('uap50_items_'.get_current_user_id(),array());
+        $this->auth(); $profile=isset($_POST['profile'])?sanitize_key($_POST['profile']):'csv'; $items=get_transient(self::ITEMS.get_current_user_id());
         if (!is_array($items)) $items=array();
         $maps=array(
             'prom'=>array('id','title','description','price','images','source_url'),
@@ -211,7 +211,7 @@ final class UAP50_Advanced {
 
     public function publish_advanced() {
         $this->auth(); if (!class_exists('WooCommerce')) wp_send_json_error(array('message'=>'Для розширеної публікації товарів потрібен WooCommerce.'),400);
-        $items=get_option(self::ITEMS.get_current_user_id(),array()); if (!is_array($items)) $items=array();
+        $items=get_transient(self::ITEMS.get_current_user_id()); if (!is_array($items)) $items=array();
         $type=isset($_POST['post_type'])?sanitize_key($_POST['post_type']):'product'; $status=isset($_POST['post_status'])?sanitize_key($_POST['post_status']):'draft';
         if (!in_array($type,array('product','post','page'),true)) wp_send_json_error(array('message'=>'Непідтримуваний тип.'),400);
         if (!in_array($status,array('draft','publish'),true)) $status='draft';
