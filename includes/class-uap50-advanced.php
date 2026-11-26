@@ -13,7 +13,7 @@ final class UAP50_Advanced {
     public function __construct() {
         add_action('wp_ajax_uap50_preview', array($this, 'preview'));
         add_action('wp_ajax_uap50_selector_extract', array($this, 'selector_extract'));
-        add_action('wp_ajax_uap50_queue_start', array($this, 'queue_start'));
+        add_action('wp_ajax_uap50_queue_start', array($this, 'queue_start'));\n        add_action('wp_ajax_uap50_queue_status', array($this, 'queue_status'));
         add_action('wp_ajax_uap50_queue_step', array($this, 'queue_step'));
         add_action('wp_ajax_uap50_profile_save', array($this, 'profile_save'));
         add_action('wp_ajax_uap50_profile_list', array($this, 'profile_list'));
@@ -156,6 +156,12 @@ private function css_to_xpath($css) {
         wp_send_json_success(array('started'=>true));
     }
 
+    public function queue_status() {
+        $this->auth(); $q=get_transient(self::QUEUE.get_current_user_id());
+        if (!is_array($q)) wp_send_json_success(array('active'=>false));
+        wp_send_json_success(array('active'=>empty($q['done']),'scanned'=>(int)$q['scanned'],'remaining'=>count($q['queue']),'added'=>(int)$q['added']));
+    }
+
     public function queue_step() {
         $this->auth(); $uid=get_current_user_id(); $key=self::QUEUE.$uid; $q=get_transient($key);
         if (!is_array($q)) wp_send_json_error(array('message'=>'Чергу не запущено.'),400);
@@ -254,7 +260,7 @@ private function css_to_xpath($css) {
                 if (!empty($item['attributes']) && is_array($item['attributes'])) {
                     $wcattrs=array(); $pos=0;
                     foreach ($item['attributes'] as $k=>$v) {
-                        $k=sanitize_text_field($k); $v=sanitize_text_field($v); $p->update_meta_data('uap50_'.sanitize_key($k),$v);
+                        $k=sanitize_text_field($k); $v=sanitize_text_field($v); $p->update_meta_data('uap50_'.sanitize_key($k),$v); if ($k==='sku') continue;
                         if (class_exists('WC_Product_Attribute')) { $a=new WC_Product_Attribute(); $a->set_id(0); $a->set_name($k); $a->set_options(array($v)); $a->set_position($pos++); $a->set_visible(true); $a->set_variation(false); $wcattrs[]=$a; }
                     }
                     if ($wcattrs) $p->set_attributes($wcattrs);
