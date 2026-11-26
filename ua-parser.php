@@ -2,7 +2,7 @@
 /**
  * Plugin Name: UA Parser
  * Description: Візуальний збір вебконтенту, черга сторінок, CMS-профілі та публікація у WordPress/WooCommerce.
- * Version: 5.0.0-beta.5
+ * Version: 5.0.0-beta.6
  * Author: portallcomua
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 if (!defined('ABSPATH')) exit;
 
 final class UA_Parser_50 {
-    const VERSION = '5.0.0-beta.5';
+    const VERSION = '5.0.0-beta.6';
     const NONCE = 'uap50_nonce';
     const STORE = 'uap50_items_';
 
@@ -45,7 +45,7 @@ final class UA_Parser_50 {
         if (!current_user_can('manage_options')) return;
         ?>
         <div class="wrap uap50">
-            <h1>UA Parser <small>5.0 beta.5</small></h1>
+            <h1>UA Parser <small>5.0 beta.6</small></h1>
             <p>Збір даних з публічної сторінки та публікація результатів на цьому WordPress-сайті.</p>
             <section class="uap50-card">
                 <label for="uap50-url"><b>URL сайту або сторінки</b></label>
